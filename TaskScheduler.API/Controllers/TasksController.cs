@@ -69,8 +69,7 @@ namespace TaskScheduler.API.Controllers
                 if (!await _context.Tasks.AnyAsync(t => t.Id == id))
                     return NotFound();
                 throw;
-            }
-
+            } 
             return NoContent();
         }
 
