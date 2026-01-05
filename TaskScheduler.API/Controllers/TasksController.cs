@@ -20,9 +20,12 @@ namespace TaskScheduler.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ScheduledTask>>> GetTasks()
         {
-            return await _context.Tasks
+            var data =
+             await _context.Tasks
                 .Include(t => t.Triggers)
                 .ToListAsync();
+
+            return data;
         }
 
         // GET: api/tasks/5

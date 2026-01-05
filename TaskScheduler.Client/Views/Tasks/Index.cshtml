@@ -1,68 +1,68 @@
 ﻿@using TaskScheduler.Core.Models
 @using DevExtreme.AspNet.Mvc
 
-@{
-    ViewData["Title"] = "Task Scheduler";
-}
+<h2>Task Scheduler Management</h2>
 
-<div class="container mt-4">
-    <h2>Task Scheduler Management</h2>
-    
-    @(Html.DevExtreme().DataGrid<ScheduledTask>()
-        .ID("gridTasks")
-        .DataSource(d => d.Mvc()
-            .Controller("Tasks")  // ชี้มาที่ TasksController ที่เราเพิ่งสร้าง
-            .LoadAction("Get")
-            .InsertAction("Post")
-            .UpdateAction("Put")
-            .DeleteAction("Delete")
-            .Key("Id")
-        )
-        .ShowBorders(true)
-        .RepaintChangesOnly(true)
-        .Editing(e => e
-            .Mode(GridEditMode.Popup)
-            .AllowAdding(true)
-            .AllowUpdating(true)
-            .AllowDeleting(true)
-            .Popup(p => p
-                .Title("Task Info")
-                .ShowTitle(true)
-                .Width(700)
-                .Height(600)
+@(Html.DevExtreme().DataGrid<ScheduledTask>()
+    .ID("gridTasks")
+    .DataSource(d => d.Mvc().Controller("Tasks").LoadAction("Get").InsertAction("Post").UpdateAction("Put").DeleteAction("Delete").Key("Id"))
+    .ShowBorders(true)
+    .Paging(p => p.PageSize(10))
+    .Editing(e => e.Mode(GridEditMode.Popup).AllowAdding(true).AllowUpdating(true).AllowDeleting(true))
+    .Columns(columns => {
+        columns.AddFor(m => m.Name);
+        columns.AddFor(m => m.ApiUrl);
+        columns.AddFor(m => m.IsActive);
+    })
+    .MasterDetail(md => md
+        .Enabled(true)
+        .Template(@<text>
+            <div class="master-detail-caption">Trigger Settings for: <%= data.Name %></div>
+            
+            @(Html.DevExtreme().DataGrid<TaskTrigger>()
+                .DataSource(d => d.Mvc()
+                    .Controller("TaskTriggers")
+                    .LoadAction("Get")
+                    .LoadParams(new { taskId = new JS("data.Id") }) // ส่ง TaskId ไปเพื่อดึงเฉพาะ Trigger ของงานนี้
+                    .InsertAction("Post")
+                    .UpdateAction("Put")
+                    .DeleteAction("Delete")
+                    .Key("Id")
+                )
+                .OnInitNewRow("function(e) { e.data.TaskId = data.Id; }") // กำหนด TaskId อัตโนมัติเวลาสร้างใหม่
+                .ShowBorders(true)
+                .Editing(e => e.Mode(GridEditMode.Row).AllowAdding(true).AllowUpdating(true).AllowDeleting(true))
+                .Columns(cols => {
+                    cols.AddFor(t => t.TriggerType)
+                        .Lookup(l => l.DataSource(new[] { "Interval", "Daily" }));
+                        
+                    cols.AddFor(t => t.IntervalMinutes)
+                        .Caption("Every (Minutes)")
+                        .ValidationRules(r => r.AddCustom().ValidationCallback("validateInterval")); // เพิ่ม Validation ตามประเภท
+
+                    cols.AddFor(t => t.StartTime)
+                        .DataType(GridColumnDataType.String)
+                        .Format("HH:mm");
+                    
+                    cols.AddFor(t => t.NextExecutionTime)
+                        .AllowEditing(false) // ห้ามแก้ ให้ระบบคำนวณเอง
+                        .Format("dd/MM/yyyy HH:mm:ss")
+                        .SortOrder(SortOrder.Asc);
+                        
+                    cols.AddFor(t => t.IsActive);
+                })
             )
-            .Form(f => f.Items(items => {
-                items.AddGroup()
-                    .Caption("General Info")
-                    .ColCount(2)
-                    .ColSpan(2)
-                    .Items(groupItems => {
-                        groupItems.AddSimpleFor(m => m.Name);
-                        groupItems.AddSimpleFor(m => m.IsActive);
-                    });
-
-                items.AddGroup()
-                    .Caption("API Configuration")
-                    .ColCount(1)
-                    .ColSpan(2)
-                    .Items(groupItems => {
-                        groupItems.AddSimpleFor(m => m.HttpMethod)
-                            .Editor(editor => editor.SelectBox().Items(new[] { "GET", "POST", "PUT", "DELETE" }));
-                        groupItems.AddSimpleFor(m => m.ApiUrl);
-                        groupItems.AddSimpleFor(m => m.Headers).Editor(e => e.TextArea().Height(80));
-                        groupItems.AddSimpleFor(m => m.Body).Editor(e => e.TextArea().Height(100));
-                    });
-            }))
-        )
-        .Columns(columns => {
-            columns.AddFor(m => m.Id).Width(60).AllowEditing(false);
-            columns.AddFor(m => m.Name).Caption("Task Name");
-            columns.AddFor(m => m.ApiUrl).Caption("Target URL");
-            columns.AddFor(m => m.HttpMethod).Width(100).Caption("Method");
-            columns.AddFor(m => m.IsActive).Width(80).Caption("Active");
-        })
-        .Paging(p => p.PageSize(10))
-        .FilterRow(f => f.Visible(true))
-        .HeaderFilter(f => f.Visible(true))
+        </text>)
     )
-</div>
+)
+
+<script>
+    function validateInterval(e) {
+        // ตัวอย่าง: ถ้าเลือก Interval ต้องใส่ค่า > 0
+        var data = e.data;
+        if (data.TriggerType === "Interval" && (!data.IntervalMinutes || data.IntervalMinutes <= 0)) {
+            return false;
+        }
+        return true;
+    }
+</script>
