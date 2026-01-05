@@ -2,8 +2,8 @@
 using DevExtreme.AspNet.Mvc;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using TaskScheduler.Core.Models;
 using System.Text;
+using TaskScheduler.Core.Models;
 
 namespace TaskScheduler.Client.Controllers
 {
@@ -16,38 +16,37 @@ namespace TaskScheduler.Client.Controllers
             _clientFactory = clientFactory;
         }
 
-        // หน้าจอหลัก (แสดง Grid)
+        // เปิดหน้าเว็บ (View)
         public IActionResult Index()
         {
             return View();
         }
 
-        // READ: ดึงข้อมูลสำหรับ DevExtreme Grid
+        // READ: ดึงข้อมูล (Proxy -> API)
         [HttpGet]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
             var client = _clientFactory.CreateClient("TaskApi");
 
-            // ดึงข้อมูลทั้งหมดจาก API
+            // เรียก API Backend (ตรวจสอบว่า Backend รันอยู่และ Port ถูกต้อง)
             var response = await client.GetAsync("api/tasks");
             if (!response.IsSuccessStatusCode)
-                return BadRequest("Cannot retrieve tasks from API");
+                return BadRequest("Could not retrieve tasks from API.");
 
             var json = await response.Content.ReadAsStringAsync();
             var tasks = JsonConvert.DeserializeObject<List<ScheduledTask>>(json) ?? new List<ScheduledTask>();
 
-            // ใช้ DataSourceLoader เพื่อรองรับการ Sort/Filter จาก Grid ฝั่ง Client
+            // ให้ DevExtreme จัดการ Sort/Filter/Page
             return DataSourceLoader.Load(tasks, loadOptions);
         }
 
-        // CREATE: สร้าง Task ใหม่
+        // CREATE: สร้างงานใหม่
         [HttpPost]
         public async Task<IActionResult> Post(string values)
         {
             var newTask = new ScheduledTask();
-            JsonConvert.PopulateObject(values, newTask);
+            JsonConvert.PopulateObject(values, newTask); // แปลง JSON จากหน้าเว็บเป็น Object
 
-            // Validate เบื้องต้น
             if (!TryValidateModel(newTask))
                 return BadRequest(ModelState);
 
@@ -61,23 +60,23 @@ namespace TaskScheduler.Client.Controllers
             return Ok();
         }
 
-        // UPDATE: แก้ไข Task
+        // UPDATE: แก้ไขงาน
         [HttpPut]
         public async Task<IActionResult> Put(int key, string values)
         {
             var client = _clientFactory.CreateClient("TaskApi");
 
-            // 1. ดึงข้อมูลเก่ามาก่อน (เพื่อ Merge ค่าที่แก้)
+            // 1. ดึงข้อมูลเก่ามาก่อน
             var getResponse = await client.GetAsync($"api/tasks/{key}");
             if (!getResponse.IsSuccessStatusCode) return NotFound();
 
             var oldJson = await getResponse.Content.ReadAsStringAsync();
             var task = JsonConvert.DeserializeObject<ScheduledTask>(oldJson);
 
-            // 2. เอาค่าใหม่ (values) ไปทับค่าเก่า
+            // 2. เอาค่าใหม่ทับค่าเก่า
             JsonConvert.PopulateObject(values, task);
 
-            // 3. ส่งกลับไป Update
+            // 3. ส่งกลับไปบันทึก
             var content = new StringContent(JsonConvert.SerializeObject(task), Encoding.UTF8, "application/json");
             var response = await client.PutAsync($"api/tasks/{key}", content);
 
@@ -87,7 +86,7 @@ namespace TaskScheduler.Client.Controllers
             return Ok();
         }
 
-        // DELETE: ลบ Task
+        // DELETE: ลบงาน
         [HttpDelete]
         public async Task<IActionResult> Delete(int key)
         {

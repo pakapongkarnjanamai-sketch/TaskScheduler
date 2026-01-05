@@ -1,7 +1,17 @@
 ﻿var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages().AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = null);
+builder.Services.AddControllersWithViews()
+    .AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver());
+
+builder.Services.AddRazorPages();
+
+// ✅ ลงทะเบียน HttpClient สำหรับเรียก Backend API
+// ตรวจสอบ Port 5070 จากไฟล์ launchSettings.json ของโปรเจกต์ API
+builder.Services.AddHttpClient("TaskApi", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7253/");
+});
 
 var app = builder.Build();
 
@@ -9,24 +19,20 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
+app.UseStaticFiles(); // สำคัญสำหรับ DevExtreme Scripts/Styles
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorPages().WithStaticAssets();
 
-app.MapControllers();
-
+// เพิ่ม Default Route สำหรับ Controller
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Tasks}/{action=Index}/{id?}");
 
 app.Run();
