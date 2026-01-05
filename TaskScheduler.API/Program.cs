@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using TaskScheduler.Data;
 using Quartz;
+using TaskScheduler.Data;
+using TaskScheduler.Data.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,7 +16,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<IDateTime, DateTimeService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
