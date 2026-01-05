@@ -73,19 +73,21 @@ namespace TaskScheduler.API.Controllers
         // 🟢 Logic คำนวณเวลา Next Run
         private void CalculateNextRun(TaskTrigger trigger)
         {
-            var now = DateTime.UtcNow.AddHours(7); // ตัวอย่างใช้เวลาไทย หรือใช้ UTC ตามตกลง
+            // กำหนดเวลาปัจจุบัน (สมมติว่าเป็นเวลาไทย UTC+7)
+            var now = DateTime.UtcNow.AddHours(7);
 
             if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
             {
-                // รันอีกครั้งใน X นาทีข้างหน้า
-                trigger.NextExecutionTime = DateTime.UtcNow.AddMinutes(trigger.IntervalMinutes.Value);
+                // ✅ แก้ไข: ใช้ now แทน DateTime.UtcNow
+                trigger.NextExecutionTime = now.AddMinutes(trigger.IntervalMinutes.Value);
             }
             else if (trigger.TriggerType == "Daily" && trigger.StartTime.HasValue)
             {
-                // ตั้งเวลาของวันนี้
-                var todayRun = DateTime.UtcNow.Date.Add(trigger.StartTime.Value);
-                // ถ้าเวลาของวันนี้ผ่านไปแล้ว ให้รันพรุ่งนี้
-                trigger.NextExecutionTime = (todayRun > DateTime.UtcNow) ? todayRun : todayRun.AddDays(1);
+                // ✅ แก้ไข: ใช้ now.Date เพื่อให้ได้วันที่ตามเวลาไทย
+                var todayRun = now.Date.Add(trigger.StartTime.Value);
+
+                // ✅ แก้ไข: เปรียบเทียบกับ now
+                trigger.NextExecutionTime = (todayRun > now) ? todayRun : todayRun.AddDays(1);
             }
         }
     }

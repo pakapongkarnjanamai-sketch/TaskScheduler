@@ -1,68 +1,174 @@
-﻿@using TaskScheduler.Core.Models
-@using DevExtreme.AspNet.Mvc
+﻿@{
+    ViewData["Title"] = "Task Scheduler (jQuery)";
+}
 
-<h2>Task Scheduler Management</h2>
+<div class="container mt-4">
+    <h2>Task Scheduler Management</h2>
 
-@(Html.DevExtreme().DataGrid<ScheduledTask>()
-    .ID("gridTasks")
-    .DataSource(d => d.Mvc().Controller("Tasks").LoadAction("Get").InsertAction("Post").UpdateAction("Put").DeleteAction("Delete").Key("Id"))
-    .ShowBorders(true)
-    .Paging(p => p.PageSize(10))
-    .Editing(e => e.Mode(GridEditMode.Popup).AllowAdding(true).AllowUpdating(true).AllowDeleting(true))
-    .Columns(columns => {
-        columns.AddFor(m => m.Name);
-        columns.AddFor(m => m.ApiUrl);
-        columns.AddFor(m => m.IsActive);
-    })
-    .MasterDetail(md => md
-        .Enabled(true)
-        .Template(@<text>
-            <div class="master-detail-caption">Trigger Settings for: <%= data.Name %></div>
-            
-            @(Html.DevExtreme().DataGrid<TaskTrigger>()
-                .DataSource(d => d.Mvc()
-                    .Controller("TaskTriggers")
-                    .LoadAction("Get")
-                    .LoadParams(new { taskId = new JS("data.Id") }) // ส่ง TaskId ไปเพื่อดึงเฉพาะ Trigger ของงานนี้
-                    .InsertAction("Post")
-                    .UpdateAction("Put")
-                    .DeleteAction("Delete")
-                    .Key("Id")
-                )
-                .OnInitNewRow("function(e) { e.data.TaskId = data.Id; }") // กำหนด TaskId อัตโนมัติเวลาสร้างใหม่
-                .ShowBorders(true)
-                .Editing(e => e.Mode(GridEditMode.Row).AllowAdding(true).AllowUpdating(true).AllowDeleting(true))
-                .Columns(cols => {
-                    cols.AddFor(t => t.TriggerType)
-                        .Lookup(l => l.DataSource(new[] { "Interval", "Daily" }));
-                        
-                    cols.AddFor(t => t.IntervalMinutes)
-                        .Caption("Every (Minutes)")
-                        .ValidationRules(r => r.AddCustom().ValidationCallback("validateInterval")); // เพิ่ม Validation ตามประเภท
+    <div id="gridTasks"></div>
+</div>
 
-                    cols.AddFor(t => t.StartTime)
-                        .DataType(GridColumnDataType.String)
-                        .Format("HH:mm");
-                    
-                    cols.AddFor(t => t.NextExecutionTime)
-                        .AllowEditing(false) // ห้ามแก้ ให้ระบบคำนวณเอง
-                        .Format("dd/MM/yyyy HH:mm:ss")
-                        .SortOrder(SortOrder.Asc);
-                        
-                    cols.AddFor(t => t.IsActive);
-                })
-            )
-        </text>)
-    )
-)
+@section Scripts {
+    <script>
+        $(function () {
+            // URL ของ Controller ฝั่ง Client ที่ทำหน้าที่เป็น Proxy
+            var serviceUrl = "https://localhost:7253/api/";
 
-<script>
-    function validateInterval(e) {
-        // ตัวอย่าง: ถ้าเลือก Interval ต้องใส่ค่า > 0
-        var data = e.data;
-        if (data.TriggerType === "Interval" && (!data.IntervalMinutes || data.IntervalMinutes <= 0)) {
-            return false;
-        }
-        return true;
-    }
-</script>
+            // สร้าง DataSource เชื่อมต่อกับ Controller
+            var store = DevExpress.data.AspNet.createStore({
+                key: "Id",
+                loadUrl: serviceUrl + "Tasks/Get",
+                insertUrl: serviceUrl + "Tasks/Post",
+                updateUrl: serviceUrl + "Tasks/Put",
+                deleteUrl: serviceUrl + "Tasks/Delete",
+                onBeforeSend: function (method, ajaxOptions) {
+                    ajaxOptions.xhrFields = { withCredentials: true };
+                }
+            });
+
+            // Initialize DataGrid
+            $("#gridTasks").dxDataGrid({
+                dataSource: store,
+                showBorders: true,
+                repaintChangesOnly: true,
+                paging: { pageSize: 10 },
+                filterRow: { visible: true },
+                headerFilter: { visible: true },
+                editing: {
+                    mode: "popup",
+                    allowAdding: true,
+                    allowUpdating: true,
+                    allowDeleting: true,
+                    popup: {
+                        title: "Task Info",
+                        showTitle: true,
+                        width: 700,
+                        height: 600
+                    },
+                    form: {
+                        items: [
+                            {
+                                itemType: "group",
+                                caption: "General Info",
+                                colCount: 2,
+                                colSpan: 2,
+                                items: ["Name", "IsActive"]
+                            },
+                            {
+                                itemType: "group",
+                                caption: "API Configuration",
+                                colCount: 1,
+                                colSpan: 2,
+                                items: [
+                                    {
+                                        dataField: "HttpMethod",
+                                        editorType: "dxSelectBox",
+                                        editorOptions: {
+                                            items: ["GET", "POST", "PUT", "DELETE"]
+                                        }
+                                    },
+                                    "ApiUrl",
+                                    {
+                                        dataField: "Headers",
+                                        editorType: "dxTextArea",
+                                        editorOptions: { height: 80 }
+                                    },
+                                    {
+                                        dataField: "Body",
+                                        editorType: "dxTextArea",
+                                        editorOptions: { height: 100 }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                columns: [
+                    { dataField: "Id", width: 60, allowEditing: false },
+                    { dataField: "Name", caption: "Task Name" },
+                    { dataField: "ApiUrl", caption: "Target URL" },
+                    { dataField: "HttpMethod", caption: "Method", width: 100 },
+                    { dataField: "IsActive", caption: "Active", width: 80, dataType: "boolean" }
+                ],
+                // เพิ่ม Master-Detail (ตาราง Trigger ซ้อนข้างใน)
+                masterDetail: {
+                    enabled: true,
+                    template: function (container, options) {
+                        var currentTask = options.data;
+
+                        $("<div>")
+                            .addClass("master-detail-caption")
+                            .text("Trigger Settings for: " + currentTask.Name)
+                            .appendTo(container);
+
+                        $("<div>").dxDataGrid({
+                            dataSource: DevExpress.data.AspNet.createStore({
+                                key: "Id",
+                                loadUrl: serviceUrl+"TaskTriggers/Get",
+                                loadParams: { taskId: currentTask.Id },
+                                insertUrl: serviceUrl+"TaskTriggers/Post",
+                                updateUrl:serviceUrl+ "TaskTriggers/Put",
+                                deleteUrl: serviceUrl+"TaskTriggers/Delete",
+                                onBeforeSend: function(method, ajaxOptions) {
+                                    // ส่ง TaskId ไปด้วยตอน Insert
+                                    if(method === "insert") {
+                                        // createStore จะส่ง values เป็น JSON string เราต้อง append ค่าไป
+                                        var data = JSON.parse(ajaxOptions.data.values);
+                                        data.TaskId = currentTask.Id;
+                                        ajaxOptions.data.values = JSON.stringify(data);
+                                    }
+                                }
+                            }),
+                            showBorders: true,
+                            editing: {
+                                mode: "row",
+                                allowAdding: true,
+                                allowUpdating: true,
+                                allowDeleting: true
+                            },
+                            columns: [
+                                {
+                                    dataField: "TriggerType",
+                                    lookup: {
+                                        dataSource: ["Interval", "Daily"]
+                                    }
+                                },
+                                {
+                                    dataField: "IntervalMinutes",
+                                    caption: "Every (Min)",
+                                    validationRules: [{
+                                        type: "custom",
+                                        validationCallback: function(e) {
+                                            var row = e.data;
+                                            // เช็คว่าถ้าเป็น Interval ต้องมีค่า
+                                            if (row.TriggerType === "Interval" && (!e.value || e.value <= 0)) return false;
+                                            return true;
+                                        },
+                                        message: "Required for Interval type"
+                                    }]
+                                },
+                                {
+                                    dataField: "StartTime",
+                                    caption: "Start Time",
+                                    dataType: "string", // รับค่ามาเป็น TimeSpan string "HH:mm:ss"
+                                    editorOptions: {
+                                        type: "time",
+                                        displayFormat: "HH:mm"
+                                    }
+                                },
+                                {
+                                    dataField: "NextExecutionTime",
+                                    dataType: "datetime",
+                                    format: "dd/MM/yyyy HH:mm:ss",
+                                    allowEditing: false,
+                                    sortOrder: "asc"
+                                },
+                                { dataField: "IsActive", dataType: "boolean" }
+                            ]
+                        }).appendTo(container);
+                    }
+                }
+            });
+        });
+    </script>
+}
