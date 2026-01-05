@@ -57,7 +57,6 @@ namespace TaskScheduler.Data
             {
                 entity.ToTable("TaskExecutionLogs");
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.ExecutedAt).HasDefaultValueSql("GETDATE()");
             });
         }
 

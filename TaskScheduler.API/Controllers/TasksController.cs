@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using DevExtreme.AspNet.Data;
+using DevExtreme.AspNet.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using TaskScheduler.Core.Models;
 using TaskScheduler.Data;
 
 namespace TaskScheduler.API.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
+    [ApiController]
     public class TasksController : ControllerBase
     {
         private readonly TaskSchedulerDbContext _context;
@@ -16,78 +19,67 @@ namespace TaskScheduler.API.Controllers
             _context = context;
         }
 
-        // GET: api/tasks
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<ScheduledTask>>> GetTasks()
+        // URL: api/Tasks/Get
+        [HttpGet("Get")]
+        public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
-            var data =
-             await _context.Tasks
-                .Include(t => t.Triggers)
-                .ToListAsync();
+            // ใช้ DataSourceLoader เพื่อจัดการ filter/sort/page จาก Grid
+            // ไม่จำเป็นต้อง Include Triggers เพราะ Client ใช้ Master-Detail โหลดแยกต่างหาก
+            var source = _context.Tasks.AsNoTracking();
 
-            return data;
+            return DataSourceLoader.Load(source, loadOptions);
         }
 
-        // GET: api/tasks/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<ScheduledTask>> GetTask(int id)
+        // URL: api/Tasks/Post
+        [HttpPost("Post")]
+        public async Task<IActionResult> Post([FromForm] string values)
         {
-            var task = await _context.Tasks
-                .Include(t => t.Triggers)
-                .FirstOrDefaultAsync(t => t.Id == id);
+            var task = new ScheduledTask();
+            JsonConvert.PopulateObject(values, task);
 
-            if (task == null)
-                return NotFound();
+            if (!TryValidateModel(task))
+                return BadRequest(ModelState);
 
-            return task;
-        }
+            // Set default values if needed
+            // task.CreatedDate = DateTime.UtcNow;
 
-        // POST: api/tasks
-        [HttpPost]
-        public async Task<ActionResult<ScheduledTask>> CreateTask(ScheduledTask task)
-        {
-            //task.CreatedDate = DateTime.UtcNow;
             _context.Tasks.Add(task);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetTask), new { id = task.Id }, task);
+            return Ok(task);
         }
 
-        // PUT: api/tasks/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTask(int id, ScheduledTask task)
+        // URL: api/Tasks/Put
+        [HttpPut("Put")]
+        public async Task<IActionResult> Put([FromForm] int key, [FromForm] string values)
         {
-            if (id != task.Id)
-                return BadRequest();
+            var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == key);
+            if (task == null)
+                return NotFound();
 
-            //task.ModifiedDate = DateTime.UtcNow;
-            _context.Entry(task).State = EntityState.Modified;
+            JsonConvert.PopulateObject(values, task);
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _context.Tasks.AnyAsync(t => t.Id == id))
-                    return NotFound();
-                throw;
-            } 
-            return NoContent();
+            if (!TryValidateModel(task))
+                return BadRequest(ModelState);
+
+            // task.ModifiedDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return Ok(task);
         }
 
-        // DELETE: api/tasks/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTask(int id)
+        // URL: api/Tasks/Delete
+        [HttpDelete("Delete")]
+        public async Task<IActionResult> Delete([FromForm] int key)
         {
-            var task = await _context.Tasks.FindAsync(id);
+            var task = await _context.Tasks.FindAsync(key);
             if (task == null)
                 return NotFound();
 
             _context.Tasks.Remove(task);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok();
         }
     }
 }

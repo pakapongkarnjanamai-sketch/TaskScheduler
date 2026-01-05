@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using TaskScheduler.API.Services;
+﻿using TaskScheduler.API.Services;
 using TaskScheduler.Data;
 
 namespace TaskScheduler.API.Workers
@@ -19,46 +18,42 @@ namespace TaskScheduler.API.Workers
         {
             _logger.LogInformation("Scheduler Worker Started.");
 
-            // ใช้ PeriodicTimer (Native .NET 6+) ตรวจสอบทุกๆ 10 วินาที
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
-
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            while (!stoppingToken.IsCancellationRequested)
             {
+                // ✅ 1. กำหนดเวลาปัจจุบันเป็น Thai Time (UTC+7)
+                var thaiNow = DateTime.UtcNow.AddHours(7);
+
                 try
                 {
-                    await ProcessDueTasks(stoppingToken);
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var context = scope.ServiceProvider.GetRequiredService<TaskSchedulerDbContext>();
+                        var taskRunner = scope.ServiceProvider.GetRequiredService<TaskRunnerService>();
+
+                        // ✅ 2. ค้นหา Trigger ที่ถึงเวลาทำงานแล้ว (NextExecutionTime <= thaiNow)
+                        var dueTriggers = context.TaskTriggers
+                            .Where(t => t.IsActive && t.NextExecutionTime <= thaiNow)
+                            .ToList(); // ดึงมาเป็น List ก่อนเพื่อหลีกเลี่ยง Concurrency ปัญหาของ EF
+
+                        if (dueTriggers.Any())
+                        {
+                            _logger.LogInformation($"[{thaiNow:HH:mm:ss}] Found {dueTriggers.Count} tasks to run.");
+
+                            foreach (var trigger in dueTriggers)
+                            {
+                                // รันงานและคำนวณรอบถัดไป
+                                await taskRunner.RunTask(trigger.Id);
+                            }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error in Scheduler Worker");
+                    _logger.LogError(ex, "Error in SchedulerWorker");
                 }
-            }
-        }
 
-        private async Task ProcessDueTasks(CancellationToken stoppingToken)
-        {
-            // BackgroundService เป็น Singleton แต่ DbContext เป็น Scoped จึงต้องสร้าง Scope ใหม่
-            using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<TaskSchedulerDbContext>();
-            var runner = scope.ServiceProvider.GetRequiredService<TaskRunnerService>();
-
-            // หา Trigger ที่ถึงเวลาแล้ว (NextExecutionTime <= Now)
-            var dueTriggers = await context.TaskTriggers
-                .Where(t => t.IsActive && t.NextExecutionTime <= DateTime.UtcNow)
-                .Select(t => t.Id)
-                .ToListAsync(stoppingToken);
-
-            foreach (var triggerId in dueTriggers)
-            {
-                // แยกการรันแต่ละ Task เพื่อไม่ให้ Task หนึ่งพังแล้วพาตัวอื่นหยุดไปด้วย
-                try
-                {
-                    await runner.ExecuteTaskAsync(triggerId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to process trigger {triggerId}");
-                }
+                // รอ 10 วินาทีก่อนเช็คใหม่
+                await Task.Delay(10000, stoppingToken);
             }
         }
     }
