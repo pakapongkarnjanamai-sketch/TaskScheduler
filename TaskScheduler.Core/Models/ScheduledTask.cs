@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace TaskScheduler.Core.Models
 {
@@ -10,10 +6,11 @@ namespace TaskScheduler.Core.Models
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string ApiUrl { get; set; } = string.Empty;
-        public string HttpMethod { get; set; } = "GET";
-        public string? Headers { get; set; }
-        public string? Body { get; set; }
+
+        // ลบ ApiUrl, HttpMethod, Headers, Body เดิมออก
+
+        // เพิ่มความสัมพันธ์แบบ One-to-Many กับ TaskStep
+        public ICollection<TaskStep> Steps { get; set; } = new List<TaskStep>();
 
         public ICollection<TaskTrigger> Triggers { get; set; } = new List<TaskTrigger>();
     }

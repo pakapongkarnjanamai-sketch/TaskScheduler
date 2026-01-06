@@ -1,174 +1,272 @@
 ﻿@{
-    ViewData["Title"] = "Task Scheduler (jQuery)";
+    ViewData["Title"] = "Task Scheduler Management";
 }
 
-<div class="container mt-4">
-    <h2>Task Scheduler Management</h2>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="dx-icon-runner"></i> Task Scheduler</h2>
+    </div>
 
     <div id="gridTasks"></div>
+
+    <div id="popupHistory"></div>
 </div>
 
 @section Scripts {
     <script>
         $(function () {
-            // URL ของ Controller ฝั่ง Client ที่ทำหน้าที่เป็น Proxy
-            var serviceUrl = "https://localhost:7253/api/";
+            var serviceUrl = "https://localhost:7253/api/"; // ⚠️ ตรวจสอบ Port ให้ตรงกับเครื่องคุณ
 
-            // สร้าง DataSource เชื่อมต่อกับ Controller
-            var store = DevExpress.data.AspNet.createStore({
+            // --- STORES ---
+            // 1. Store สำหรับ Tasks หลัก
+            var tasksStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
                 loadUrl: serviceUrl + "Tasks/Get",
                 insertUrl: serviceUrl + "Tasks/Post",
                 updateUrl: serviceUrl + "Tasks/Put",
                 deleteUrl: serviceUrl + "Tasks/Delete",
+                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+            });
+
+            // 2. Store สำหรับ Steps (Target URLs หลายตัว) ✅
+            var stepsStore = DevExpress.data.AspNet.createStore({
+                key: "Id",
+                loadUrl: serviceUrl + "TaskSteps/Get",
+                insertUrl: serviceUrl + "TaskSteps/Post",
+                updateUrl: serviceUrl + "TaskSteps/Put",
+                deleteUrl: serviceUrl + "TaskSteps/Delete",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
+                    // ส่ง TaskId ไปด้วยตอน Insert
+                    if (method === "insert") {
+                         var data = JSON.parse(ajaxOptions.data.values);
+                         // TaskId จะถูกเติมใน onInitNewRow ของ Grid แต่กันพลาดไว้ตรงนี้
+                         ajaxOptions.data.values = JSON.stringify(data);
+                    }
                 }
             });
 
-            // Initialize DataGrid
+            // 3. Store สำหรับ Triggers (เวลาทำงาน)
+            var triggersStore = DevExpress.data.AspNet.createStore({
+                key: "Id",
+                loadUrl: serviceUrl + "TaskTriggers/Get",
+                insertUrl: serviceUrl + "TaskTriggers/Post",
+                updateUrl: serviceUrl + "TaskTriggers/Put",
+                deleteUrl: serviceUrl + "TaskTriggers/Delete",
+                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+            });
+
+            // 4. Store สำหรับ Logs
+            var logsStore = DevExpress.data.AspNet.createStore({
+                key: "Id",
+                loadUrl: serviceUrl + "TaskExecutionLogs/Get",
+                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+            });
+
+            // --- MAIN GRID: TASKS ---
             $("#gridTasks").dxDataGrid({
-                dataSource: store,
+                dataSource: tasksStore,
                 showBorders: true,
-                repaintChangesOnly: true,
+                columnAutoWidth: true,
                 paging: { pageSize: 10 },
-                filterRow: { visible: true },
+                searchPanel: { visible: true },
                 headerFilter: { visible: true },
+
+       
+        masterDetail: {
+            enabled: true,
+            template: function(container, options) {
+                var currentTaskId = options.key;
+
+                $("<div>").dxTabPanel({
+                    items: [
+                        {
+                            title: "1. Workflow Steps (Target URLs)",
+                            template: function(itemData, itemIndex, itemElement) {
+                                createStepsGrid(itemElement, currentTaskId);
+                            }
+                        },
+                        {
+                            title: "2. Schedules (Triggers)",
+                            template: function(itemData, itemIndex, itemElement) {
+                                createTriggersGrid(itemElement, currentTaskId);
+                            }
+                        }
+                    ],
+                    height: 450
+                }).appendTo(container);
+            }
+        }
+        ,
                 editing: {
                     mode: "popup",
                     allowAdding: true,
                     allowUpdating: true,
                     allowDeleting: true,
-                    popup: {
-                        title: "Task Info",
-                        showTitle: true,
-                        width: 700,
-                        height: 600
-                    },
+                    popup: { title: "Task Info", showTitle: true, width: 600, height: 350 },
                     form: {
                         items: [
-                            {
-                                itemType: "group",
-                                caption: "General Info",
-                                colCount: 2,
-                                colSpan: 2,
-                                items: ["Name", "IsActive"]
-                            },
-                            {
-                                itemType: "group",
-                                caption: "API Configuration",
-                                colCount: 1,
-                                colSpan: 2,
-                                items: [
-                                    {
-                                        dataField: "HttpMethod",
-                                        editorType: "dxSelectBox",
-                                        editorOptions: {
-                                            items: ["GET", "POST", "PUT", "DELETE"]
-                                        }
-                                    },
-                                    "ApiUrl",
-                                    {
-                                        dataField: "Headers",
-                                        editorType: "dxTextArea",
-                                        editorOptions: { height: 80 }
-                                    },
-                                    {
-                                        dataField: "Body",
-                                        editorType: "dxTextArea",
-                                        editorOptions: { height: 100 }
-                                    }
-                                ]
-                            }
+                            // ❌ เอา ApiUrl ออกจากตรงนี้ เพราะย้ายไปอยู่ใน Steps แล้ว
+                            { itemType: "group", caption: "General Info", colCount: 1, items: ["Name", "IsActive"] },
+                            { itemType: "group", caption: "Description", items: [{ dataField: "Description", editorType: "dxTextArea", editorOptions: { height: 80 } }] }
                         ]
                     }
                 },
                 columns: [
-                    { dataField: "Id", width: 60, allowEditing: false },
-                    { dataField: "Name", caption: "Task Name" },
-                    { dataField: "ApiUrl", caption: "Target URL" },
-                    { dataField: "HttpMethod", caption: "Method", width: 100 },
-                    { dataField: "IsActive", caption: "Active", width: 80, dataType: "boolean" }
-                ],
-                // เพิ่ม Master-Detail (ตาราง Trigger ซ้อนข้างใน)
-                masterDetail: {
-                    enabled: true,
-                    template: function (container, options) {
-                        var currentTask = options.data;
-
-                        $("<div>")
-                            .addClass("master-detail-caption")
-                            .text("Trigger Settings for: " + currentTask.Name)
-                            .appendTo(container);
-
-                        $("<div>").dxDataGrid({
-                            dataSource: DevExpress.data.AspNet.createStore({
-                                key: "Id",
-                                loadUrl: serviceUrl+"TaskTriggers/Get",
-                                loadParams: { taskId: currentTask.Id },
-                                insertUrl: serviceUrl+"TaskTriggers/Post",
-                                updateUrl:serviceUrl+ "TaskTriggers/Put",
-                                deleteUrl: serviceUrl+"TaskTriggers/Delete",
-                                onBeforeSend: function(method, ajaxOptions) {
-                                    // ส่ง TaskId ไปด้วยตอน Insert
-                                    if(method === "insert") {
-                                        // createStore จะส่ง values เป็น JSON string เราต้อง append ค่าไป
-                                        var data = JSON.parse(ajaxOptions.data.values);
-                                        data.TaskId = currentTask.Id;
-                                        ajaxOptions.data.values = JSON.stringify(data);
-                                    }
-                                }
-                            }),
-                            showBorders: true,
-                            editing: {
-                                mode: "row",
-                                allowAdding: true,
-                                allowUpdating: true,
-                                allowDeleting: true
-                            },
-                            columns: [
-                                {
-                                    dataField: "TriggerType",
-                                    lookup: {
-                                        dataSource: ["Interval", "Daily"]
-                                    }
-                                },
-                                {
-                                    dataField: "IntervalMinutes",
-                                    caption: "Every (Min)",
-                                    validationRules: [{
-                                        type: "custom",
-                                        validationCallback: function(e) {
-                                            var row = e.data;
-                                            // เช็คว่าถ้าเป็น Interval ต้องมีค่า
-                                            if (row.TriggerType === "Interval" && (!e.value || e.value <= 0)) return false;
-                                            return true;
-                                        },
-                                        message: "Required for Interval type"
-                                    }]
-                                },
-                                {
-                                    dataField: "StartTime",
-                                    caption: "Start Time",
-                                    dataType: "string", // รับค่ามาเป็น TimeSpan string "HH:mm:ss"
-                                    editorOptions: {
-                                        type: "time",
-                                        displayFormat: "HH:mm"
-                                    }
-                                },
-                                {
-                                    dataField: "NextExecutionTime",
-                                    dataType: "datetime",
-                                    format: "dd/MM/yyyy HH:mm:ss",
-                                    allowEditing: false,
-                                    sortOrder: "asc"
-                                },
-                                { dataField: "IsActive", dataType: "boolean" }
-                            ]
-                        }).appendTo(container);
+                    { dataField: "Id", width: 50, allowEditing: false },
+                    { dataField: "Name", validationRules: [{ type: "required" }] },
+                    { dataField: "Description", visible: false },
+                    { dataField: "IsActive", dataType: "boolean", width: 80 },
+                    { dataField: "UpdatedAt", dataType: "datetime", format: "dd/MM/yyyy HH:mm", allowEditing: false, width: 150 },
+                    {
+                        type: "buttons", width: 120,
+                        buttons: ["edit", "delete", {
+                            hint: "View History", icon: "clock",
+                            onClick: function(e) { showHistory(e.row.data.Id, e.row.data.Name); }
+                        }]
                     }
-                }
+                ]
             });
+
+            // --- SUB GRID 1: STEPS (ส่วนที่เพิ่มใหม่สำหรับ Multiple URLs) ---
+            function createStepsGrid(container, taskId) {
+                $("<div>").dxDataGrid({
+                    dataSource: {
+                        store: stepsStore,
+                        filter: ["TaskId", "=", taskId] // ✅ กรองเฉพาะ Step ของงานนี้
+                    },
+                    showBorders: true,
+                    columnAutoWidth: true,
+                    rowDragging: {
+                        allowReordering: true,
+                        onDragChange: function(e) {
+                            // Logic สำหรับลากวางเปลี่ยนลำดับ (Optional: ถ้าต้องการทำจริงจังต้องเขียน API update Order)
+                            var visibleRows = e.component.getVisibleRows(),
+                                sourceNode = e.component.getNodeByKey(e.itemData.Id),
+                                targetNode = visibleRows[e.toIndex].node;
+                        },
+                        onReorder: function(e) {
+                            // อัปเดต Order ที่หน้าบ้าน (หลังบ้านต้องเขียน Logic เพิ่มถ้าจะให้จำถาวร)
+                            e.component.refresh();
+                        }
+                    },
+                    editing: {
+                        mode: "popup", // ใช้ Popup เพื่อให้ใส่ Body/Headers ได้สะดวก
+                        allowAdding: true,
+                        allowUpdating: true,
+                        allowDeleting: true,
+                        popup: { title: "Step Configuration", showTitle: true, width: 700, height: 550 }
+                    },
+                    columns: [
+                        {
+                            dataField: "Order",
+                            caption: "#",
+                            sortOrder: "asc",
+                            width: 60,
+                            dataType: "number",
+                            validationRules: [{ type: "required" }]
+                        },
+                        {
+                            dataField: "Name",
+                            caption: "Step Name",
+                            validationRules: [{ type: "required" }],
+                            placeholder: "e.g. Login, Get Data"
+                        },
+                        {
+                            dataField: "HttpMethod",
+                            width: 100,
+                            lookup: { dataSource: ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+                            validationRules: [{ type: "required" }]
+                        },
+                        {
+                            dataField: "ApiUrl",
+                            caption: "Target URL",
+                            validationRules: [{ type: "required" }]
+                        },
+                        {
+                            dataField: "Headers",
+                            visible: false,
+                            editorType: "dxTextArea",
+                            editorOptions: { height: 80, placeholder: '{"Authorization": "Bearer..."}' }
+                        },
+                        {
+                            dataField: "Body",
+                            visible: false,
+                            editorType: "dxTextArea",
+                            editorOptions: { height: 120, placeholder: '{"key": "value"}' }
+                        }
+                    ],
+                    onInitNewRow: function(e) {
+                        e.data.TaskId = taskId; // ✅ Auto Assign TaskId
+
+                        // Auto increment Order (แบบง่ายๆ)
+                        // e.component.totalCount() อาจจะยังไม่มาทันที ให้ใส่ 1 ไว้ก่อน
+                        e.data.Order = 1;
+                        e.data.HttpMethod = "GET";
+                    }
+                }).appendTo(container);
+            }
+
+            // --- SUB GRID 2: TRIGGERS (ตั้งเวลาเหมือนเดิม) ---
+            function createTriggersGrid(container, taskId) {
+                $("<div>").dxDataGrid({
+                    dataSource: { store: triggersStore, filter: ["TaskId", "=", taskId] },
+                    showBorders: true,
+                    columnAutoWidth: true,
+                    editing: { mode: "row", allowAdding: true, allowUpdating: true, allowDeleting: true },
+                    columns: [
+                        {
+                            dataField: "TriggerType", caption: "Type", width: 120,
+                            lookup: { dataSource: ["Interval", "Daily"] },
+                            validationRules: [{ type: "required" }]
+                        },
+                        {
+                            dataField: "IntervalMinutes", caption: "Every (Min)", dataType: "number",
+                            editorOptions: { min: 1 }
+                        },
+                        {
+                            dataField: "StartTime", caption: "Start Time (HH:mm)", dataType: "string",
+                            editorOptions: { type: "time", displayFormat: "HH:mm" }
+                        },
+                        { dataField: "NextExecutionTime", dataType: "datetime", format: "dd/MM/yyyy HH:mm", allowEditing: false },
+                        { dataField: "IsActive", dataType: "boolean", width: 80 }
+                    ],
+                    onInitNewRow: function(e) {
+                        e.data.TaskId = taskId;
+                        e.data.TriggerType = "Interval";
+                        e.data.IsActive = true;
+                    }
+                }).appendTo(container);
+            }
+
+            // --- POPUP: HISTORY ---
+            function showHistory(taskId, taskName) {
+                $("#popupHistory").dxPopup({
+                    title: "History: " + taskName,
+                    visible: true,
+                    width: 900, height: 600,
+                    contentTemplate: function(content) {
+                        $("<div>").dxDataGrid({
+                            dataSource: { store: logsStore, filter: ["TaskId", "=", taskId], sort: [{ selector: "StartTime", desc: true }] },
+                            showBorders: true,
+                            columnAutoWidth: true,
+                            paging: { pageSize: 15 },
+                            columns: [
+                                { dataField: "StartTime", dataType: "datetime", format: "dd/MM/yyyy HH:mm:ss", width: 150 },
+                                { dataField: "EndTime", dataType: "datetime", format: "HH:mm:ss", width: 100 },
+                                {
+                                    dataField: "Status", width: 100,
+                                    cellTemplate: function(container, options) {
+                                        var color = options.value === "Success" ? "green" : (options.value === "Running" ? "blue" : "red");
+                                        $("<span style='font-weight:bold; color:" + color + "'>").text(options.value).appendTo(container);
+                                    }
+                                },
+                                { dataField: "ResponseMessage", caption: "Details", width: 400 }
+                            ]
+                        }).appendTo(content);
+                    }
+                });
+            }
         });
     </script>
 }

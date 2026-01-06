@@ -31,6 +31,7 @@ namespace TaskScheduler.Data
         public DbSet<ScheduledTask> Tasks { get; set; }
         public DbSet<TaskTrigger> TaskTriggers { get; set; }
         public DbSet<TaskExecutionLog> TaskExecutionLogs { get; set; }
+        public DbSet<TaskStep> TaskSteps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,7 +40,7 @@ namespace TaskScheduler.Data
                 entity.ToTable("Tasks");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.ApiUrl).IsRequired().HasMaxLength(500);
+
 
             });
 
@@ -57,6 +58,18 @@ namespace TaskScheduler.Data
             {
                 entity.ToTable("TaskExecutionLogs");
                 entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<TaskStep>(entity =>
+            {
+                entity.ToTable("TaskSteps");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ApiUrl).IsRequired().HasMaxLength(500);
+
+                entity.HasOne(e => e.Task)
+                      .WithMany(e => e.Steps)
+                      .HasForeignKey(e => e.TaskId)
+                      .OnDelete(DeleteBehavior.Cascade); // ลบ Task แล้ว Step หายด้วย
             });
         }
 
