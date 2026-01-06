@@ -3,7 +3,7 @@ using TaskScheduler.API.Services; // เพิ่ม
 using TaskScheduler.API.Workers;  // เพิ่ม
 using TaskScheduler.Data;
 using TaskScheduler.Data.Services;
-
+using TaskScheduler.API.Hubs;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
@@ -20,7 +20,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // ✅ เพิ่ม Service สำหรับรัน Task
 builder.Services.AddScoped<TaskRunnerService>();
-
+builder.Services.AddSignalR();
 // ✅ เพิ่ม Background Service (Scheduler)
 builder.Services.AddHostedService<SchedulerWorker>();
 builder.Services.AddCors(options =>
@@ -48,5 +48,5 @@ app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-
+app.MapHub<TaskHub>("/taskHub");
 app.Run();

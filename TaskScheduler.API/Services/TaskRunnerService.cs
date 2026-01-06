@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
+using TaskScheduler.API.Hubs;
 using TaskScheduler.Core.Models;
 using TaskScheduler.Data;
 
@@ -10,12 +12,18 @@ namespace TaskScheduler.API.Services
         private readonly TaskSchedulerDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<TaskRunnerService> _logger;
+        private readonly IHubContext<TaskHub> _hubContext; // เพิ่มตัวแปรสำหรับ SignalR
 
-        public TaskRunnerService(TaskSchedulerDbContext context, IHttpClientFactory httpClientFactory, ILogger<TaskRunnerService> logger)
+        public TaskRunnerService(
+            TaskSchedulerDbContext context,
+            IHttpClientFactory httpClientFactory,
+            ILogger<TaskRunnerService> logger,
+            IHubContext<TaskHub> hubContext) // Inject IHubContext เข้ามา
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         public async Task RunTask(int triggerId)
@@ -43,8 +51,15 @@ namespace TaskScheduler.API.Services
             _context.TaskExecutionLogs.Add(mainExecutionLog);
             await _context.SaveChangesAsync(); // Save เพื่อให้ได้ mainExecutionLog.Id มาใช้ต่อ
 
+            // [SignalR] แจ้ง Client ว่าเริ่มทำงานแล้ว (Status: Running)
+            await _hubContext.Clients.All.SendAsync("ReceiveTaskUpdate", trigger.TaskId, new
+            {
+                LastStatus = "Running",
+                LastExecutionTime = thaiNowMinute
+            });
+
             bool allStepsSuccess = true;
-            var summaryBuilder = new StringBuilder(); // เก็บสรุปสั้นๆ ไว้ที่ตัวแม่ (ถ้าต้องการ)
+            var summaryBuilder = new StringBuilder();
 
             try
             {
@@ -62,7 +77,7 @@ namespace TaskScheduler.API.Services
                     // 2. สร้าง Log ของ Step (Child)
                     var stepLog = new TaskStepExecutionLog
                     {
-                        TaskExecutionLogId = mainExecutionLog.Id, // ผูกกับ Log แม่
+                        TaskExecutionLogId = mainExecutionLog.Id,
                         StepName = step.Name,
                         Order = step.Order,
                         StartTime = DateTime.UtcNow.AddHours(7),
@@ -71,7 +86,7 @@ namespace TaskScheduler.API.Services
                     };
 
                     _context.TaskStepExecutionLogs.Add(stepLog);
-                    await _context.SaveChangesAsync(); // Save สถานะเริ่ม Step
+                    await _context.SaveChangesAsync();
 
                     try
                     {
@@ -89,15 +104,13 @@ namespace TaskScheduler.API.Services
                         var response = await client.SendAsync(request);
                         var content = await response.Content.ReadAsStringAsync();
 
-                        // ตัด Content ถ้าเวิ่นเว้อเกินไป
                         var contentLog = content.Length > 1000 ? content.Substring(0, 1000) + "..." : content;
 
-                        // ✅ อัปเดตผลลัพธ์ลงใน Step Log ตัวเดิม (แยกเก็บเป็น Record ของใครของมัน)
                         stepLog.EndTime = DateTime.UtcNow.AddHours(7);
                         stepLog.Status = response.IsSuccessStatusCode ? "Success" : "Failed";
                         stepLog.ResponseMessage = $"Status: {response.StatusCode}\nResponse: {contentLog}";
 
-                        await _context.SaveChangesAsync(); // Save จบ Step
+                        await _context.SaveChangesAsync();
 
                         if (!response.IsSuccessStatusCode)
                         {
@@ -113,8 +126,6 @@ namespace TaskScheduler.API.Services
                     catch (Exception stepEx)
                     {
                         allStepsSuccess = false;
-
-                        // บันทึก Error ลงใน Step Log
                         stepLog.EndTime = DateTime.UtcNow.AddHours(7);
                         stepLog.Status = "Error";
                         stepLog.ResponseMessage = $"Exception: {stepEx.Message}";
@@ -129,7 +140,7 @@ namespace TaskScheduler.API.Services
                 var endNow = DateTime.UtcNow.AddHours(7);
                 mainExecutionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
                 mainExecutionLog.Status = allStepsSuccess ? "Success" : "Failed";
-                mainExecutionLog.ResponseMessage = summaryBuilder.ToString(); // เก็บแค่สรุปย่อๆ
+                mainExecutionLog.ResponseMessage = summaryBuilder.ToString();
 
             }
             catch (Exception ex)
@@ -141,15 +152,23 @@ namespace TaskScheduler.API.Services
                 _logger.LogError(ex, $"Error running task {trigger.Task.Name}");
             }
 
+            // คำนวณรอบถัดไป
             trigger.LastExecutionTime = thaiNowMinute;
             CalculateNextRun(trigger, thaiNowMinute);
 
             await _context.SaveChangesAsync();
+
+            // [SignalR] แจ้ง Client ว่าจบงานแล้ว พร้อมส่งเวลา Next Run ใหม่ไปอัปเดต
+            await _hubContext.Clients.All.SendAsync("ReceiveTaskUpdate", trigger.TaskId, new
+            {
+                LastStatus = mainExecutionLog.Status, // Success หรือ Failed หรือ Error
+                LastExecutionTime = thaiNowMinute,
+                NextExecutionTime = trigger.NextExecutionTime
+            });
         }
 
         private void CalculateNextRun(TaskTrigger trigger, DateTime baseTime)
         {
-            // Logic เดิม
             if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
             {
                 trigger.NextExecutionTime = baseTime.AddMinutes(trigger.IntervalMinutes.Value);

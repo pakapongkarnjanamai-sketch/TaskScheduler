@@ -23,9 +23,35 @@ namespace TaskScheduler.API.Controllers
         [HttpGet("Get")]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
-            // ใช้ DataSourceLoader เพื่อจัดการ filter/sort/page จาก Grid
-            // ไม่จำเป็นต้อง Include Triggers เพราะ Client ใช้ Master-Detail โหลดแยกต่างหาก
-            var source = _context.Tasks.AsNoTracking();
+            var source = _context.Tasks.AsNoTracking()
+                  .Select(t => new {
+                      t.Id,
+                      t.Name,
+                      t.Description,
+                      t.IsActive,
+                      t.UpdatedAt,
+
+                      // 1. ดึง Status ล่าสุดจาก Log ที่เวลา StartTime มากที่สุด
+                      LastStatus = _context.TaskExecutionLogs
+                                      .Where(l => l.TaskId == t.Id)
+                                      .OrderByDescending(l => l.StartTime)
+                                      .Select(l => l.Status)
+                                      .FirstOrDefault(),
+
+                      // 2. ดึงเวลาทำงานล่าสุด
+                      LastExecutionTime = _context.TaskExecutionLogs
+                                      .Where(l => l.TaskId == t.Id)
+                                      .OrderByDescending(l => l.StartTime)
+                                      .Select(l => l.StartTime)
+                                      .FirstOrDefault(),
+
+                      // 3. ดึงเวลาที่จะทำงานถัดไป (เอาเวลาที่น้อยที่สุดจาก Trigger ที่เปิดใช้งาน)
+                      NextExecutionTime = t.Triggers
+                                      .Where(tr => tr.IsActive)
+                                      .OrderBy(tr => tr.NextExecutionTime)
+                                      .Select(tr => tr.NextExecutionTime)
+                                      .FirstOrDefault()
+                  });
 
             return DataSourceLoader.Load(source, loadOptions);
         }
