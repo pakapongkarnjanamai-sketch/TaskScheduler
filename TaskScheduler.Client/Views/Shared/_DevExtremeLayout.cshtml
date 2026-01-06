@@ -1,47 +1,41 @@
-﻿
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaskScheduler - @ViewData["Title"]</title>
-
-    @await RenderSectionAsync("ExternalDependencies", required: false)
+    <title>@ViewData["Title"] - Task Scheduler</title>
 
     <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
-    <link href="~/css/devextreme/bootstrap.min.css" rel="stylesheet" />
-    <link href="~/css/devextreme/dx.light.compact.css" rel="stylesheet" />
-    <link href="~/lib/font-awesome/css/all.min.css" rel="stylesheet" />
-    
+    <link href="~/css/devextreme/dx.light.css" rel="stylesheet" />
+
     <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
-    <script src="~/js/devextreme/filesaver.min.js"></script>
-    <script src="~/js/devextreme/exceljs.min.js"></script>
     <script src="~/js/devextreme/jquery.js"></script>
-    <script src="~/js/devextreme/bootstrap.js"></script>
     <script src="~/js/devextreme/dx.all.js"></script>
     <script src="~/js/devextreme/aspnet/dx.aspnet.mvc.js"></script>
     <script src="~/js/devextreme/aspnet/dx.aspnet.data.js"></script>
     <script src="~/src/devextreme-license.js"></script>
-    <script src="~/lib/font-awesome/js/all.min.js"></script>
-
     <style>
-   
-    </style>
+        /* ==================== LAYOUT & CONTAINER ==================== */
+        .full-height-container {
+            height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 20px;
+        }
 
+       
+    </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
 
 <body>
-   
+    <nav class="navbar">
+      
+    </nav>
     <main>
         @RenderBody()
     </main>
 
-  
-
-    <script>
-     
-    </script>
     <script src="~/js/site.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

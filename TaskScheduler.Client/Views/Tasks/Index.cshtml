@@ -2,33 +2,28 @@
     ViewData["Title"] = "Task Scheduler Management";
 }
 
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="dx-icon-runner"></i> Task Scheduler</h2>
-    </div>
-
+<div class="container full-height-container mt-3">
     <div id="gridTasks"></div>
-
     <div id="popupHistory"></div>
 </div>
 
 @section Scripts {
     <script>
         $(function () {
-            var serviceUrl = "https://localhost:7253/api/"; // ⚠️ ตรวจสอบ Port ให้ตรงกับเครื่องคุณ
+            var serviceUrl = "https://localhost:7253/api/";
 
-            // --- STORES ---
-            // 1. Store สำหรับ Tasks หลัก
+            // ============ STORES ============
             var tasksStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
                 loadUrl: serviceUrl + "Tasks/Get",
                 insertUrl: serviceUrl + "Tasks/Post",
                 updateUrl: serviceUrl + "Tasks/Put",
                 deleteUrl: serviceUrl + "Tasks/Delete",
-                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+                onBeforeSend: function (method, ajaxOptions) {
+                    ajaxOptions.xhrFields = { withCredentials: true };
+                }
             });
 
-            // 2. Store สำหรับ Steps (Target URLs หลายตัว) ✅
             var stepsStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
                 loadUrl: serviceUrl + "TaskSteps/Get",
@@ -37,200 +32,343 @@
                 deleteUrl: serviceUrl + "TaskSteps/Delete",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
-                    // ส่ง TaskId ไปด้วยตอน Insert
-                    if (method === "insert") {
-                         var data = JSON.parse(ajaxOptions.data.values);
-                         // TaskId จะถูกเติมใน onInitNewRow ของ Grid แต่กันพลาดไว้ตรงนี้
-                         ajaxOptions.data.values = JSON.stringify(data);
-                    }
                 }
             });
 
-            // 3. Store สำหรับ Triggers (เวลาทำงาน)
             var triggersStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
                 loadUrl: serviceUrl + "TaskTriggers/Get",
                 insertUrl: serviceUrl + "TaskTriggers/Post",
                 updateUrl: serviceUrl + "TaskTriggers/Put",
                 deleteUrl: serviceUrl + "TaskTriggers/Delete",
-                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+                onBeforeSend: function (method, ajaxOptions) {
+                    ajaxOptions.xhrFields = { withCredentials: true };
+                }
             });
 
-            // 4. Store สำหรับ Logs
             var logsStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
                 loadUrl: serviceUrl + "TaskExecutionLogs/Get",
-                onBeforeSend: function (method, ajaxOptions) { ajaxOptions.xhrFields = { withCredentials: true }; }
+                onBeforeSend: function (method, ajaxOptions) {
+                    ajaxOptions.xhrFields = { withCredentials: true };
+                }
             });
 
-            // --- MAIN GRID: TASKS ---
+            // ============ MAIN GRID ============
             $("#gridTasks").dxDataGrid({
                 dataSource: tasksStore,
                 showBorders: true,
                 columnAutoWidth: true,
-                paging: { pageSize: 10 },
-                searchPanel: { visible: true },
-                headerFilter: { visible: true },
+                rowAlternationEnabled: true,
+                height: "100%",
+                scrolling: { mode: "virtual" },
 
-       
-        masterDetail: {
-            enabled: true,
-            template: function(container, options) {
-                var currentTaskId = options.key;
+                searchPanel: {
+                    visible: true,
+                    width: 240,
+                    placeholder: "Search..."
+                },
 
-                $("<div>").dxTabPanel({
-                    items: [
-                        {
-                            title: "1. Workflow Steps (Target URLs)",
-                            template: function(itemData, itemIndex, itemElement) {
-                                createStepsGrid(itemElement, currentTaskId);
-                            }
-                        },
-                        {
-                            title: "2. Schedules (Triggers)",
-                            template: function(itemData, itemIndex, itemElement) {
-                                createTriggersGrid(itemElement, currentTaskId);
-                            }
-                        }
-                    ],
-                    height: 450
-                }).appendTo(container);
-            }
-        }
-        ,
+                headerFilter: {
+                    visible: true
+                },
+
+                filterRow: {
+                    visible: true
+                },
+
+                export: {
+                    enabled: true,
+                    fileName: "Tasks"
+                },
+
+                // Master-Detail
+                masterDetail: {
+                    enabled: true,
+                    template: function(container, options) {
+                        var taskId = options.key;
+
+                        $("<div>").dxTabPanel({
+                            items: [
+                                {
+                                    title: "Workflow Steps",
+                                    template: function(data, index, element) {
+                                        createStepsGrid(element, taskId);
+                                    }
+                                },
+                                {
+                                    title: "Schedules",
+                                    template: function(data, index, element) {
+                                        createTriggersGrid(element, taskId);
+                                    }
+                                }
+                            ],
+                            height: 400
+                        }).appendTo(container);
+                    }
+                },
+
+                // Editing
                 editing: {
                     mode: "popup",
                     allowAdding: true,
                     allowUpdating: true,
                     allowDeleting: true,
-                    popup: { title: "Task Info", showTitle: true, width: 600, height: 350 },
+                    useIcons: true,
+                    popup: {
+                        title: "Task Information",
+                        showTitle: true,
+                        width: 600,
+                        height: 400
+                    },
                     form: {
                         items: [
-                            // ❌ เอา ApiUrl ออกจากตรงนี้ เพราะย้ายไปอยู่ใน Steps แล้ว
-                            { itemType: "group", caption: "General Info", colCount: 1, items: ["Name", "IsActive"] },
-                            { itemType: "group", caption: "Description", items: [{ dataField: "Description", editorType: "dxTextArea", editorOptions: { height: 80 } }] }
+                            {
+                                itemType: "group",
+                                caption: "General",
+                                items: ["Name", "IsActive"]
+                            },
+                            {
+                                itemType: "group",
+                                caption: "Details",
+                                items: [{
+                                    dataField: "Description",
+                                    editorType: "dxTextArea",
+                                    editorOptions: {
+                                        height: 100
+                                    }
+                                }]
+                            }
                         ]
                     }
                 },
+
+                // Columns
                 columns: [
-                    { dataField: "Id", width: 50, allowEditing: false },
-                    { dataField: "Name", validationRules: [{ type: "required" }] },
-                    { dataField: "Description", visible: false },
-                    { dataField: "IsActive", dataType: "boolean", width: 80 },
-                    { dataField: "UpdatedAt", dataType: "datetime", format: "dd/MM/yyyy HH:mm", allowEditing: false, width: 150 },
                     {
-                        type: "buttons", width: 120,
-                        buttons: ["edit", "delete", {
-                            hint: "View History", icon: "clock",
-                            onClick: function(e) { showHistory(e.row.data.Id, e.row.data.Name); }
-                        }]
+                        dataField: "Id",
+                        width: 70,
+                        allowEditing: false
+                    },
+                    {
+                        dataField: "Name",
+                        caption: "Task Name",
+                        validationRules: [{ type: "required" }]
+                    },
+                    {
+                        dataField: "Description",
+                        visible: false
+                    },
+                    {
+                        dataField: "IsActive",
+                        caption: "Active",
+                        dataType: "boolean",
+                        width: 80
+                    },
+                    {
+                        dataField: "UpdatedAt",
+                        caption: "Last Updated",
+                        dataType: "datetime",
+                        format: "dd/MM/yyyy HH:mm",
+                        allowEditing: false,
+                        width: 150
+                    },
+                    {
+                        type: "buttons",
+                        width: 110,
+                        buttons: [
+                            "edit",
+                            "delete",
+                            {
+                                hint: "History",
+                                icon: "clock",
+                                onClick: function(e) {
+                                    showHistory(e.row.data.Id, e.row.data.Name);
+                                }
+                            }
+                        ]
                     }
-                ]
+                ],
+
+                // Toolbar
+                onToolbarPreparing: function(e) {
+                    e.toolbarOptions.items.unshift({
+                        location: "after",
+                        widget: "dxButton",
+                        options: {
+                            icon: "refresh",
+                            hint: "Refresh",
+                            onClick: function() {
+                                e.component.refresh();
+                            }
+                        }
+                    });
+                }
             });
 
-            // --- SUB GRID 1: STEPS (ส่วนที่เพิ่มใหม่สำหรับ Multiple URLs) ---
+            // ============ STEPS GRID ============
             function createStepsGrid(container, taskId) {
                 $("<div>").dxDataGrid({
                     dataSource: {
                         store: stepsStore,
-                        filter: ["TaskId", "=", taskId] // ✅ กรองเฉพาะ Step ของงานนี้
+                        filter: ["TaskId", "=", taskId]
                     },
+                    remoteOperations: false,
                     showBorders: true,
                     columnAutoWidth: true,
-                    rowDragging: {
-                        allowReordering: true,
-                        onDragChange: function(e) {
-                            // Logic สำหรับลากวางเปลี่ยนลำดับ (Optional: ถ้าต้องการทำจริงจังต้องเขียน API update Order)
-                            var visibleRows = e.component.getVisibleRows(),
-                                sourceNode = e.component.getNodeByKey(e.itemData.Id),
-                                targetNode = visibleRows[e.toIndex].node;
-                        },
-                        onReorder: function(e) {
-                            // อัปเดต Order ที่หน้าบ้าน (หลังบ้านต้องเขียน Logic เพิ่มถ้าจะให้จำถาวร)
-                            e.component.refresh();
-                        }
-                    },
+
                     editing: {
-                        mode: "popup", // ใช้ Popup เพื่อให้ใส่ Body/Headers ได้สะดวก
+                        mode: "popup",
                         allowAdding: true,
                         allowUpdating: true,
                         allowDeleting: true,
-                        popup: { title: "Step Configuration", showTitle: true, width: 700, height: 550 }
+                        useIcons: true,
+                        popup: {
+                            title: "Step Configuration",
+                            showTitle: true,
+                            width: 700,
+                            height: 550
+                        },
+                        form: {
+                            items: [
+                                {
+                                    itemType: "group",
+                                    caption: "Basic Info",
+                                    colCount: 2,
+                                    items: [
+                                        "Order",
+                                        "Name",
+                                        "HttpMethod"
+                                    ]
+                                },
+                                {
+                                    itemType: "group",
+                                    caption: "Request",
+                                    items: [
+                                        "ApiUrl",
+                                        {
+                                            dataField: "Headers",
+                                            editorType: "dxTextArea",
+                                            editorOptions: { height: 80 }
+                                        },
+                                        {
+                                            dataField: "Body",
+                                            editorType: "dxTextArea",
+                                            editorOptions: { height: 100 }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
                     },
+
                     columns: [
                         {
                             dataField: "Order",
                             caption: "#",
-                            sortOrder: "asc",
                             width: 60,
                             dataType: "number",
+                            sortOrder: "asc",
                             validationRules: [{ type: "required" }]
                         },
                         {
                             dataField: "Name",
                             caption: "Step Name",
-                            validationRules: [{ type: "required" }],
-                            placeholder: "e.g. Login, Get Data"
+                            validationRules: [{ type: "required" }]
                         },
                         {
                             dataField: "HttpMethod",
+                            caption: "Method",
                             width: 100,
-                            lookup: { dataSource: ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+                            lookup: {
+                                dataSource: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+                            },
                             validationRules: [{ type: "required" }]
                         },
                         {
                             dataField: "ApiUrl",
-                            caption: "Target URL",
+                            caption: "URL",
                             validationRules: [{ type: "required" }]
                         },
                         {
                             dataField: "Headers",
-                            visible: false,
-                            editorType: "dxTextArea",
-                            editorOptions: { height: 80, placeholder: '{"Authorization": "Bearer..."}' }
+                            visible: false
                         },
                         {
                             dataField: "Body",
-                            visible: false,
-                            editorType: "dxTextArea",
-                            editorOptions: { height: 120, placeholder: '{"key": "value"}' }
+                            visible: false
                         }
                     ],
-                    onInitNewRow: function(e) {
-                        e.data.TaskId = taskId; // ✅ Auto Assign TaskId
 
-                        // Auto increment Order (แบบง่ายๆ)
-                        // e.component.totalCount() อาจจะยังไม่มาทันที ให้ใส่ 1 ไว้ก่อน
+                    onInitNewRow: function(e) {
+                        e.data.TaskId = taskId;
                         e.data.Order = 1;
                         e.data.HttpMethod = "GET";
                     }
                 }).appendTo(container);
             }
 
-            // --- SUB GRID 2: TRIGGERS (ตั้งเวลาเหมือนเดิม) ---
+            // ============ TRIGGERS GRID ============
             function createTriggersGrid(container, taskId) {
                 $("<div>").dxDataGrid({
-                    dataSource: { store: triggersStore, filter: ["TaskId", "=", taskId] },
+                    dataSource: {
+                        store: triggersStore,
+                        filter: ["TaskId", "=", taskId]
+                    },
+                    remoteOperations: false,
                     showBorders: true,
                     columnAutoWidth: true,
-                    editing: { mode: "row", allowAdding: true, allowUpdating: true, allowDeleting: true },
+                    width: "100%",
+                    height: "100%",
+                scrolling: { mode: "virtual" },
+                    editing: {
+                        mode: "row",
+                        allowAdding: true,
+                        allowUpdating: true,
+                        allowDeleting: true,
+                        useIcons: true
+                    },
+
                     columns: [
                         {
-                            dataField: "TriggerType", caption: "Type", width: 120,
-                            lookup: { dataSource: ["Interval", "Daily"] },
+                            dataField: "TriggerType",
+                            caption: "Type",
+                            width: 120,
+                            lookup: {
+                                dataSource: ["Interval", "Daily", "Weekly", "Monthly"]
+                            },
                             validationRules: [{ type: "required" }]
                         },
                         {
-                            dataField: "IntervalMinutes", caption: "Every (Min)", dataType: "number",
-                            editorOptions: { min: 1 }
+                            dataField: "IntervalMinutes",
+                            caption: "Interval (Min)",
+                            dataType: "number",
+                            width: 120,
+                            editorOptions: {
+                                min: 1
+                            }
                         },
                         {
-                            dataField: "StartTime", caption: "Start Time (HH:mm)", dataType: "string",
-                            editorOptions: { type: "time", displayFormat: "HH:mm" }
+                            dataField: "StartTime",
+                            caption: "Start Time",
+                            width: 120
                         },
-                        { dataField: "NextExecutionTime", dataType: "datetime", format: "dd/MM/yyyy HH:mm", allowEditing: false },
-                        { dataField: "IsActive", dataType: "boolean", width: 80 }
+                        {
+                            dataField: "NextExecutionTime",
+                            caption: "Next Run",
+                            dataType: "datetime",
+                            format: "dd/MM/yyyy HH:mm",
+                            allowEditing: false,
+                            width: 150
+                        },
+                        {
+                            dataField: "IsActive",
+                            caption: "Active",
+                            dataType: "boolean",
+                            width: 80
+                        }
                     ],
+
                     onInitNewRow: function(e) {
                         e.data.TaskId = taskId;
                         e.data.TriggerType = "Interval";
@@ -239,32 +377,68 @@
                 }).appendTo(container);
             }
 
-            // --- POPUP: HISTORY ---
+            // ============ HISTORY POPUP ============
             function showHistory(taskId, taskName) {
                 $("#popupHistory").dxPopup({
-                    title: "History: " + taskName,
+                    title: "Execution History: " + taskName,
                     visible: true,
-                    width: 900, height: 600,
+                    width: 900,
+                    height: 600,
+                    showCloseButton: true,
+
                     contentTemplate: function(content) {
                         $("<div>").dxDataGrid({
-                            dataSource: { store: logsStore, filter: ["TaskId", "=", taskId], sort: [{ selector: "StartTime", desc: true }] },
+                            dataSource: {
+                                store: logsStore,
+                                filter: ["TaskId", "=", taskId],
+                                sort: [{ selector: "StartTime", desc: true }]
+                            },
                             showBorders: true,
                             columnAutoWidth: true,
-                            paging: { pageSize: 15 },
+                            rowAlternationEnabled: true,
+
+                            paging: {
+                                pageSize: 20
+                            },
+
                             columns: [
-                                { dataField: "StartTime", dataType: "datetime", format: "dd/MM/yyyy HH:mm:ss", width: 150 },
-                                { dataField: "EndTime", dataType: "datetime", format: "HH:mm:ss", width: 100 },
                                 {
-                                    dataField: "Status", width: 100,
-                                    cellTemplate: function(container, options) {
-                                        var color = options.value === "Success" ? "green" : (options.value === "Running" ? "blue" : "red");
-                                        $("<span style='font-weight:bold; color:" + color + "'>").text(options.value).appendTo(container);
-                                    }
+                                    dataField: "StartTime",
+                                    caption: "Start Time",
+                                    dataType: "datetime",
+                                    format: "dd/MM/yyyy HH:mm:ss",
+                                    width: 160
                                 },
-                                { dataField: "ResponseMessage", caption: "Details", width: 400 }
+                                {
+                                    dataField: "EndTime",
+                                    caption: "End Time",
+                                    dataType: "datetime",
+                                    format: "HH:mm:ss",
+                                    width: 100
+                                },
+                                {
+                                    dataField: "Status",
+                                    width: 100
+                                },
+                                {
+                                    dataField: "ResponseMessage",
+                                    caption: "Message"
+                                }
                             ]
                         }).appendTo(content);
-                    }
+                    },
+
+                    toolbarItems: [{
+                        widget: "dxButton",
+                        location: "after",
+                        toolbar: "bottom",
+                        options: {
+                            text: "Close",
+                            onClick: function() {
+                                $("#popupHistory").dxPopup("instance").hide();
+                            }
+                        }
+                    }]
                 });
             }
         });
