@@ -2,7 +2,7 @@
     ViewData["Title"] = "Task Scheduler Management";
 }
 
-<div class="container full-height-container mt-3">
+<div class="container-fluid full-height-container mt-3">
     <div id="gridTasks"></div>
     <div id="popupHistory"></div>
     <div id="popupStepLogs"></div>
@@ -165,7 +165,7 @@
                     },
                     {
                         dataField: "Description",
-                        visible: false
+                        visible: true
                     },
                     {
                         dataField: "IsActive",
@@ -338,7 +338,7 @@
                     columnAutoWidth: true,
                     width: "100%",
                     height: "100%",
-                scrolling: { mode: "virtual" },
+                    scrolling: { mode: "virtual" },
                     editing: {
                         mode: "row",
                         allowAdding: true,
@@ -359,7 +359,7 @@
                         },
                         {
                             dataField: "IntervalMinutes",
-                            caption: "Interval (Min)",
+                            caption: "Interval",
                             dataType: "number",
                             width: 120,
                             editorOptions: {
@@ -439,7 +439,7 @@
                                 caption: "Status",
                                 width: 100,
                                 cellTemplate: function(container, options) {
-                                    var color = options.value === "Success" ? "green" : "red";
+                                    var color = ["Error", "Failed"].includes(options.value) ? "red" : "green";
                                     $("<span>")
                                         .css("color", color)
                                         .css("font-weight", "bold")
@@ -481,9 +481,7 @@
                     title: "Execution History: " + taskName,
                     visible: true,
                      width: 1000,
-                height: 650,
-          
-                  
+                    height: 650,
                     contentTemplate: function(content) {
                         $("<div>").dxDataGrid({
                             dataSource: {
@@ -496,7 +494,7 @@
                             rowAlternationEnabled: true,
 
                             height: "100%",
-                scrolling: { mode: "virtual" },
+                            scrolling: { mode: "virtual" },
 
                             columns: [
                                 {
@@ -515,7 +513,15 @@
                                 },
                                 {
                                     dataField: "Status",
-                                    width: 100
+                                    width: 100,
+                                    cellTemplate: function(container, options) {
+                                    var color = ["Error", "Failed"].includes(options.value) ? "red" : "green";
+                                    $("<span>")
+                                        .css("color", color)
+                                        .css("font-weight", "bold")
+                                        .text(options.value)
+                                        .appendTo(container);
+                                }
                                 },
                                 {
                                     dataField: "ResponseMessage",
