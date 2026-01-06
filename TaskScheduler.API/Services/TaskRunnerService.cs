@@ -23,7 +23,6 @@ namespace TaskScheduler.API.Services
             var now = DateTime.UtcNow.AddHours(7);
             var thaiNowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
 
-            // ✅ Include Steps เข้ามาด้วย
             var trigger = await _context.TaskTriggers
                 .Include(t => t.Task)
                 .ThenInclude(t => t.Steps)
@@ -31,35 +30,48 @@ namespace TaskScheduler.API.Services
 
             if (trigger == null || trigger.Task == null) return;
 
-            var executionLog = new TaskExecutionLog
+            // 1. สร้าง Log หลัก (Parent) สถานะ "Running"
+            var mainExecutionLog = new TaskExecutionLog
             {
                 TaskId = trigger.TaskId,
                 TriggerId = trigger.Id,
                 StartTime = thaiNowMinute,
-                Status = "Running"
+                Status = "Running",
+                ResponseMessage = "Task Started..."
             };
 
-            _context.TaskExecutionLogs.Add(executionLog);
-            await _context.SaveChangesAsync();
+            _context.TaskExecutionLogs.Add(mainExecutionLog);
+            await _context.SaveChangesAsync(); // Save เพื่อให้ได้ mainExecutionLog.Id มาใช้ต่อ
 
-            var logMessageBuilder = new StringBuilder(); // เอาไว้เก็บ Log ของแต่ละ Step รวมกัน
             bool allStepsSuccess = true;
+            var summaryBuilder = new StringBuilder(); // เก็บสรุปสั้นๆ ไว้ที่ตัวแม่ (ถ้าต้องการ)
 
             try
             {
-                // ✅ เรียงลำดับ Step ตาม Order
                 var steps = trigger.Task.Steps.OrderBy(s => s.Order).ToList();
+                var client = _httpClientFactory.CreateClient();
 
                 if (!steps.Any())
                 {
-                    logMessageBuilder.AppendLine("No steps defined for this task.");
+                    mainExecutionLog.ResponseMessage = "No steps defined.";
+                    summaryBuilder.AppendLine("No steps defined.");
                 }
-
-                var client = _httpClientFactory.CreateClient();
 
                 foreach (var step in steps)
                 {
-                    logMessageBuilder.AppendLine($"--- Step {step.Order}: {step.Name} ---");
+                    // 2. สร้าง Log ของ Step (Child)
+                    var stepLog = new TaskStepExecutionLog
+                    {
+                        TaskExecutionLogId = mainExecutionLog.Id, // ผูกกับ Log แม่
+                        StepName = step.Name,
+                        Order = step.Order,
+                        StartTime = DateTime.UtcNow.AddHours(7),
+                        Status = "Running",
+                        ResponseMessage = "Processing..."
+                    };
+
+                    _context.TaskStepExecutionLogs.Add(stepLog);
+                    await _context.SaveChangesAsync(); // Save สถานะเริ่ม Step
 
                     try
                     {
@@ -69,49 +81,63 @@ namespace TaskScheduler.API.Services
                             Method = new HttpMethod(step.HttpMethod)
                         };
 
-                        // ใส่ Logic Add Headers / Body ตรงนี้ (ถ้ามี)
                         if (!string.IsNullOrEmpty(step.Body) && (step.HttpMethod == "POST" || step.HttpMethod == "PUT"))
                         {
                             request.Content = new StringContent(step.Body, Encoding.UTF8, "application/json");
                         }
 
-                        // TODO: Parse Headers string -> headers dictionary if needed
-
                         var response = await client.SendAsync(request);
                         var content = await response.Content.ReadAsStringAsync();
 
-                        logMessageBuilder.AppendLine($"Status: {response.StatusCode}");
-                        // ตัด Content ให้สั้นลงหน่อยถ้ามันยาวเกินไป เพื่อไม่ให้ Log บวม
-                        var contentLog = content.Length > 500 ? content.Substring(0, 500) + "..." : content;
-                        logMessageBuilder.AppendLine($"Response: {contentLog}");
+                        // ตัด Content ถ้าเวิ่นเว้อเกินไป
+                        var contentLog = content.Length > 1000 ? content.Substring(0, 1000) + "..." : content;
+
+                        // ✅ อัปเดตผลลัพธ์ลงใน Step Log ตัวเดิม (แยกเก็บเป็น Record ของใครของมัน)
+                        stepLog.EndTime = DateTime.UtcNow.AddHours(7);
+                        stepLog.Status = response.IsSuccessStatusCode ? "Success" : "Failed";
+                        stepLog.ResponseMessage = $"Status: {response.StatusCode}\nResponse: {contentLog}";
+
+                        await _context.SaveChangesAsync(); // Save จบ Step
 
                         if (!response.IsSuccessStatusCode)
                         {
                             allStepsSuccess = false;
-                            logMessageBuilder.AppendLine(">> Step Failed. Stopping sequence.");
-                            break; // ❌ ถ้า Step นี้พัง ให้หยุดทำ Step ต่อไปทันที (หรือจะเอาออกถ้าอยากให้ทำต่อ)
+                            summaryBuilder.AppendLine($"Step {step.Order} ({step.Name}): Failed");
+                            break;
+                        }
+                        else
+                        {
+                            summaryBuilder.AppendLine($"Step {step.Order} ({step.Name}): Success");
                         }
                     }
                     catch (Exception stepEx)
                     {
                         allStepsSuccess = false;
-                        logMessageBuilder.AppendLine($"Exception in step: {stepEx.Message}");
+
+                        // บันทึก Error ลงใน Step Log
+                        stepLog.EndTime = DateTime.UtcNow.AddHours(7);
+                        stepLog.Status = "Error";
+                        stepLog.ResponseMessage = $"Exception: {stepEx.Message}";
+                        await _context.SaveChangesAsync();
+
+                        summaryBuilder.AppendLine($"Step {step.Order} ({step.Name}): Error - {stepEx.Message}");
                         break;
                     }
                 }
 
+                // 3. อัปเดตสถานะจบงานที่ Log แม่
                 var endNow = DateTime.UtcNow.AddHours(7);
-                executionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
-                executionLog.Status = allStepsSuccess ? "Success" : "Failed";
-                executionLog.ResponseMessage = logMessageBuilder.ToString();
+                mainExecutionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
+                mainExecutionLog.Status = allStepsSuccess ? "Success" : "Failed";
+                mainExecutionLog.ResponseMessage = summaryBuilder.ToString(); // เก็บแค่สรุปย่อๆ
 
             }
             catch (Exception ex)
             {
                 var endNow = DateTime.UtcNow.AddHours(7);
-                executionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
-                executionLog.Status = "Error";
-                executionLog.ResponseMessage = $"Critical Error: {ex.Message} \nDetails: {logMessageBuilder}";
+                mainExecutionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
+                mainExecutionLog.Status = "Error";
+                mainExecutionLog.ResponseMessage = $"Critical System Error: {ex.Message}";
                 _logger.LogError(ex, $"Error running task {trigger.Task.Name}");
             }
 
@@ -121,10 +147,9 @@ namespace TaskScheduler.API.Services
             await _context.SaveChangesAsync();
         }
 
-
         private void CalculateNextRun(TaskTrigger trigger, DateTime baseTime)
         {
-            // (คงโค้ดเดิมไว้)
+            // Logic เดิม
             if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
             {
                 trigger.NextExecutionTime = baseTime.AddMinutes(trigger.IntervalMinutes.Value);

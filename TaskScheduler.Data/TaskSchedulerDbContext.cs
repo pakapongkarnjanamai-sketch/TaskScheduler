@@ -32,7 +32,7 @@ namespace TaskScheduler.Data
         public DbSet<TaskTrigger> TaskTriggers { get; set; }
         public DbSet<TaskExecutionLog> TaskExecutionLogs { get; set; }
         public DbSet<TaskStep> TaskSteps { get; set; }
-
+        public DbSet<TaskStepExecutionLog> TaskStepExecutionLogs { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ScheduledTask>(entity =>

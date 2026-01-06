@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskScheduler.Data;
 
@@ -11,9 +12,11 @@ using TaskScheduler.Data;
 namespace TaskScheduler.Data.Migrations
 {
     [DbContext(typeof(TaskSchedulerDbContext))]
-    partial class TaskSchedulerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260106044239_AddTaskStepExecutionLogs")]
+    partial class AddTaskStepExecutionLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

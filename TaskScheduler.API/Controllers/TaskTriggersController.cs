@@ -21,10 +21,10 @@ namespace TaskScheduler.API.Controllers
 
         // URL: api/TaskTriggers/Get?taskId=...
         [HttpGet("Get")]
-        public object Get(int taskId, DataSourceLoadOptions loadOptions)
+        public object Get(DataSourceLoadOptions loadOptions)
         {
-            var source = _context.TaskTriggers
-                .Where(t => t.TaskId == taskId);
+     
+            var source = _context.TaskTriggers.AsQueryable();
 
             return DataSourceLoader.Load(source, loadOptions);
         }

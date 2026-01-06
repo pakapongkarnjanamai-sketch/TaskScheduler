@@ -5,6 +5,7 @@
 <div class="container full-height-container mt-3">
     <div id="gridTasks"></div>
     <div id="popupHistory"></div>
+    <div id="popupStepLogs"></div>
 </div>
 
 @section Scripts {
@@ -54,6 +55,13 @@
                 }
             });
 
+            var stepLogsStore = DevExpress.data.AspNet.createStore({
+            key: "Id",
+            loadUrl: serviceUrl + "TaskStepExecutionLogs/Get",
+            onBeforeSend: function (method, ajaxOptions) {
+                ajaxOptions.xhrFields = { withCredentials: true };
+            }
+        });
             // ============ MAIN GRID ============
             $("#gridTasks").dxDataGrid({
                 dataSource: tasksStore,
@@ -173,21 +181,31 @@
                         allowEditing: false,
                         width: 150
                     },
-                    {
-                        type: "buttons",
-                        width: 110,
-                        buttons: [
-                            "edit",
-                            "delete",
-                            {
-                                hint: "History",
-                                icon: "clock",
-                                onClick: function(e) {
-                                    showHistory(e.row.data.Id, e.row.data.Name);
-                                }
-                            }
-                        ]
+                       
+        {
+            type: "buttons",
+            width: 150, // ปรับความกว้างเพิ่มเล็กน้อยให้พอดีปุ่ม
+            buttons: [
+                "edit",
+                "delete",
+                {
+                    hint: "History",
+                    icon: "clock",
+                    onClick: function(e) {
+                        showHistory(e.row.data.Id, e.row.data.Name);
                     }
+                },
+                // --- เพิ่มปุ่ม Step Logs ตรงนี้ ---
+                {
+                    hint: "Step Logs",
+                    icon: "menu", // หรือใช้ icon 'list' ก็ได้
+                    onClick: function(e) {
+                        showStepLogs(e.row.data.Id, e.row.data.Name);
+                    }
+                }
+            ]
+        }
+        
                 ],
 
                 // Toolbar
@@ -376,16 +394,96 @@
                     }
                 }).appendTo(container);
             }
+                    // ============ STEP LOGS POPUP ============
+        function showStepLogs(taskId, taskName) {
+            var popup = $("#popupStepLogs").dxPopup({
+                title: "Step Logs: " + taskName,
+                visible: true,
+                width: 1000,
+                height: 650,
+ 
+                contentTemplate: function(content) {
+                    $("<div>").dxDataGrid({
+                        dataSource: {
+                            store: stepLogsStore,
+                            // Filter ผ่าน Relation: TaskExecutionLog -> TaskId
+                            filter: ["TaskExecutionLog.TaskId", "=", taskId],
+                            sort: [{ selector: "StartTime", desc: true }]
+                        },
+                        showBorders: true,
+                        columnAutoWidth: true,
+                        rowAlternationEnabled: true,
+                        height: "100%",
+                scrolling: { mode: "virtual" },
+                        columns: [
+                            {
+                                dataField: "StartTime",
+                                caption: "Start Time",
+                                dataType: "datetime",
+                                format: "dd/MM/yyyy HH:mm:ss",
+                                width: 160
+                            },
+                            {
+                                dataField: "StepName",
+                                caption: "Step Name",
+                                width: 150
+                            },
+                            {
+                                dataField: "Order",
+                                caption: "#",
+                                width: 50,
+                                alignment: "center"
+                            },
+                            {
+                                dataField: "Status",
+                                caption: "Status",
+                                width: 100,
+                                cellTemplate: function(container, options) {
+                                    var color = options.value === "Success" ? "green" : "red";
+                                    $("<span>")
+                                        .css("color", color)
+                                        .css("font-weight", "bold")
+                                        .text(options.value)
+                                        .appendTo(container);
+                                }
+                            },
+                            {
+                                dataField: "ResponseMessage",
+                                caption: "Message",
+                                // ให้ตัดข้อความถ้ายาวเกินไป
+                                cellTemplate: function(container, options) {
+                                    var text = options.value || "";
+                                    $("<div>")
+                                        .attr("title", text) // tooltip
+                                        .text(text)
+                                        .appendTo(container);
+                                }
+                            },
+                            {
+                                dataField: "EndTime",
+                                caption: "End Time",
+                                dataType: "datetime",
+                                format: "HH:mm:ss",
+                                width: 100,
+                                visible: false // ซ่อนไว้ก่อน เปิดดูได้ถ้าต้องการ
+                            }
+                        ],
 
+                     
+
+                    }).appendTo(content);
+                }
+            }).dxPopup("instance");
+        }
             // ============ HISTORY POPUP ============
             function showHistory(taskId, taskName) {
                 $("#popupHistory").dxPopup({
                     title: "Execution History: " + taskName,
                     visible: true,
-                    width: 900,
-                    height: 600,
-                    showCloseButton: true,
-
+                     width: 1000,
+                height: 650,
+          
+                  
                     contentTemplate: function(content) {
                         $("<div>").dxDataGrid({
                             dataSource: {
@@ -397,9 +495,8 @@
                             columnAutoWidth: true,
                             rowAlternationEnabled: true,
 
-                            paging: {
-                                pageSize: 20
-                            },
+                            height: "100%",
+                scrolling: { mode: "virtual" },
 
                             columns: [
                                 {
@@ -428,17 +525,7 @@
                         }).appendTo(content);
                     },
 
-                    toolbarItems: [{
-                        widget: "dxButton",
-                        location: "after",
-                        toolbar: "bottom",
-                        options: {
-                            text: "Close",
-                            onClick: function() {
-                                $("#popupHistory").dxPopup("instance").hide();
-                            }
-                        }
-                    }]
+                   
                 });
             }
         });
