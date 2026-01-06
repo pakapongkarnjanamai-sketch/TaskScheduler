@@ -23,7 +23,6 @@ namespace TaskScheduler.API.Controllers
         [HttpGet("Get")]
         public object Get(int taskId, DataSourceLoadOptions loadOptions)
         {
-            // Filter ตาม TaskId ที่ส่งมาจาก loadParams ของ Client
             var source = _context.TaskTriggers
                 .Where(t => t.TaskId == taskId);
 
@@ -40,7 +39,6 @@ namespace TaskScheduler.API.Controllers
             if (!TryValidateModel(trigger))
                 return BadRequest(ModelState);
 
-            // ✅ คำนวณเวลาครั้งถัดไปทันทีที่สร้าง
             CalculateNextRun(trigger);
 
             _context.TaskTriggers.Add(trigger);
@@ -62,7 +60,6 @@ namespace TaskScheduler.API.Controllers
             if (!TryValidateModel(trigger))
                 return BadRequest(ModelState);
 
-            // ✅ คำนวณเวลาใหม่เมื่อมีการแก้ไข
             CalculateNextRun(trigger);
 
             await _context.SaveChangesAsync();
@@ -84,21 +81,29 @@ namespace TaskScheduler.API.Controllers
             return Ok();
         }
 
-        // 🟢 Logic คำนวณเวลา Next Run (คงไว้ตามเดิม)
+        // 🟢 Logic คำนวณเวลา Next Run (ระดับนาที)
         private void CalculateNextRun(TaskTrigger trigger)
         {
-            // กำหนดเวลาปัจจุบัน (สมมติว่าเป็นเวลาไทย UTC+7)
             var now = DateTime.UtcNow.AddHours(7);
+
+            // ✅ ตัดวินาทีและมิลลิวินาทีทิ้ง ให้เหลือแค่ระดับนาที
+            var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
 
             if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
             {
-                // ถ้าแก้ไข Interval ให้เริ่มนับใหม่จากปัจจุบัน
-                trigger.NextExecutionTime = now.AddMinutes(trigger.IntervalMinutes.Value);
+                // บวกนาทีจากเวลาปัจจุบันที่ตัดวินาทีแล้ว
+                trigger.NextExecutionTime = nowMinute.AddMinutes(trigger.IntervalMinutes.Value);
             }
             else if (trigger.TriggerType == "Daily" && trigger.StartTime.HasValue)
             {
-                var todayRun = now.Date.Add(trigger.StartTime.Value);
-                trigger.NextExecutionTime = (todayRun > now) ? todayRun : todayRun.AddDays(1);
+                // ตัดวินาทีออกจาก StartTime ของ Trigger ด้วย (เช่น 10:30:45 -> 10:30:00)
+                var start = trigger.StartTime.Value;
+                var startClean = new TimeSpan(start.Hours, start.Minutes, 0);
+
+                var todayRun = nowMinute.Date.Add(startClean);
+
+                // ถ้าเวลาที่ตั้งไว้ ผ่านไปแล้วของวันนี้ ให้ตั้งเป็นพรุ่งนี้
+                trigger.NextExecutionTime = (todayRun > nowMinute) ? todayRun : todayRun.AddDays(1);
             }
         }
     }
