@@ -11,7 +11,8 @@
 @section Scripts {
     <script>
         $(function () {
-            var serviceUrl = "https://localhost:7253/api/";
+            // var serviceUrl = "https://localhost:7253/api/";
+            var serviceUrl = "https://ap-ntc2138-qawb/TaskScheduler/Service/api/";
 
             // ============ STORES ============
             var tasksStore = DevExpress.data.AspNet.createStore({
@@ -64,7 +65,8 @@
             });
 
             var connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://localhost:7253/taskHub") // ⚠️ ตรวจสอบ Port ของ API ให้ถูกต้อง (ในไฟล์ Program.cs เห็นใช้ 7253 ถ้าไม่ใช่ให้แก้ตรงนี้)
+                .withUrl("https://ap-ntc2138-qawb/TaskScheduler/Service/taskHub") 
+                // .withUrl("https://localhost:7253/taskHub") 
                 .withAutomaticReconnect()
                 .build();
                 connection.on("ReceiveTaskUpdate", function (taskId, data) {
