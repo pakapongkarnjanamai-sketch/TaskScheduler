@@ -8,11 +8,11 @@ namespace TaskScheduler.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TaskStepExecutionLogsController : ControllerBase
+    public class StepExecutionLogsController : ControllerBase
     {
         private readonly TaskSchedulerDbContext _context;
 
-        public TaskStepExecutionLogsController(TaskSchedulerDbContext context)
+        public StepExecutionLogsController(TaskSchedulerDbContext context)
         {
             _context = context;
         }
@@ -21,7 +21,7 @@ namespace TaskScheduler.API.Controllers
         public object Get(DataSourceLoadOptions loadOptions)
         {
             // เพิ่ม Include เพื่อให้สามารถ Filter "TaskExecutionLog.TaskId" จากหน้าบ้านได้
-            var source = _context.TaskStepExecutionLogs
+            var source = _context.StepExecutionLogs
                 .Include(x => x.TaskExecutionLog)
                 .AsQueryable();
 

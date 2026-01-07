@@ -25,7 +25,7 @@ namespace TaskScheduler.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.ScheduledTask", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Task", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -114,7 +114,7 @@ namespace TaskScheduler.Data.Migrations
                     b.ToTable("TaskExecutionLogs", (string)null);
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStep", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Step", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -171,7 +171,7 @@ namespace TaskScheduler.Data.Migrations
                     b.ToTable("TaskSteps", (string)null);
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStepExecutionLog", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.StepExecutionLog", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -223,10 +223,10 @@ namespace TaskScheduler.Data.Migrations
 
                     b.HasIndex("TaskExecutionLogId");
 
-                    b.ToTable("TaskStepExecutionLogs");
+                    b.ToTable("StepExecutionLogs");
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskTrigger", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Schedule", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -279,7 +279,7 @@ namespace TaskScheduler.Data.Migrations
 
             modelBuilder.Entity("TaskScheduler.Core.Models.TaskExecutionLog", b =>
                 {
-                    b.HasOne("TaskScheduler.Core.Models.ScheduledTask", "Task")
+                    b.HasOne("TaskScheduler.Core.Models.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -288,9 +288,9 @@ namespace TaskScheduler.Data.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStep", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Step", b =>
                 {
-                    b.HasOne("TaskScheduler.Core.Models.ScheduledTask", "Task")
+                    b.HasOne("TaskScheduler.Core.Models.Task", "Task")
                         .WithMany("Steps")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -299,7 +299,7 @@ namespace TaskScheduler.Data.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStepExecutionLog", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.StepExecutionLog", b =>
                 {
                     b.HasOne("TaskScheduler.Core.Models.TaskExecutionLog", "TaskExecutionLog")
                         .WithMany()
@@ -310,9 +310,9 @@ namespace TaskScheduler.Data.Migrations
                     b.Navigation("TaskExecutionLog");
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.TaskTrigger", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Schedule", b =>
                 {
-                    b.HasOne("TaskScheduler.Core.Models.ScheduledTask", "Task")
+                    b.HasOne("TaskScheduler.Core.Models.Task", "Task")
                         .WithMany("Triggers")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -321,7 +321,7 @@ namespace TaskScheduler.Data.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskScheduler.Core.Models.ScheduledTask", b =>
+            modelBuilder.Entity("TaskScheduler.Core.Models.Task", b =>
                 {
                     b.Navigation("Steps");
 

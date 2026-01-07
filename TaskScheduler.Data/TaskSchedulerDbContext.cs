@@ -28,14 +28,14 @@ namespace TaskScheduler.Data
         {
         }
 
-        public DbSet<ScheduledTask> Tasks { get; set; }
-        public DbSet<TaskTrigger> TaskTriggers { get; set; }
+        public DbSet<Core.Models.Task> Tasks { get; set; }
+        public DbSet<Schedule>  Schedules { get; set; }
         public DbSet<TaskExecutionLog> TaskExecutionLogs { get; set; }
-        public DbSet<TaskStep> TaskSteps { get; set; }
-        public DbSet<TaskStepExecutionLog> TaskStepExecutionLogs { get; set; }
+        public DbSet<Step>  Steps { get; set; }
+        public DbSet<StepExecutionLog> StepExecutionLogs { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ScheduledTask>(entity =>
+            modelBuilder.Entity<Core.Models.Task>(entity =>
             {
                 entity.ToTable("Tasks");
                 entity.HasKey(e => e.Id);
@@ -44,9 +44,9 @@ namespace TaskScheduler.Data
 
             });
 
-            modelBuilder.Entity<TaskTrigger>(entity =>
+            modelBuilder.Entity<Schedule>(entity =>
             {
-                entity.ToTable("TaskTriggers");
+                entity.ToTable("Schedules");
                 entity.HasKey(e => e.Id);
                 entity.HasOne(e => e.Task)
                       .WithMany(e => e.Triggers)
@@ -60,9 +60,9 @@ namespace TaskScheduler.Data
                 entity.HasKey(e => e.Id);
             });
 
-            modelBuilder.Entity<TaskStep>(entity =>
+            modelBuilder.Entity<Step>(entity =>
             {
-                entity.ToTable("TaskSteps");
+                entity.ToTable("Steps");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ApiUrl).IsRequired().HasMaxLength(500);
 

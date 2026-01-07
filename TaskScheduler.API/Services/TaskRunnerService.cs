@@ -26,12 +26,12 @@ namespace TaskScheduler.API.Services
             _hubContext = hubContext;
         }
 
-        public async Task RunTask(int triggerId)
+        public async System.Threading.Tasks.Task RunTask(int triggerId)
         {
             var now = DateTime.UtcNow.AddHours(7);
             var thaiNowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
 
-            var trigger = await _context.TaskTriggers
+            var trigger = await _context.Schedules
                 .Include(t => t.Task)
                 .ThenInclude(t => t.Steps)
                 .FirstOrDefaultAsync(t => t.Id == triggerId);
@@ -75,7 +75,7 @@ namespace TaskScheduler.API.Services
                 foreach (var step in steps)
                 {
                     // 2. สร้าง Log ของ Step (Child)
-                    var stepLog = new TaskStepExecutionLog
+                    var stepLog = new StepExecutionLog
                     {
                         TaskExecutionLogId = mainExecutionLog.Id,
                         StepName = step.Name,
@@ -85,7 +85,7 @@ namespace TaskScheduler.API.Services
                         ResponseMessage = "Processing..."
                     };
 
-                    _context.TaskStepExecutionLogs.Add(stepLog);
+                    _context.StepExecutionLogs.Add(stepLog);
                     await _context.SaveChangesAsync();
 
                     try
@@ -167,7 +167,7 @@ namespace TaskScheduler.API.Services
             });
         }
 
-        private void CalculateNextRun(TaskTrigger trigger, DateTime baseTime)
+        private void CalculateNextRun(Schedule trigger, DateTime baseTime)
         {
             if (trigger.TriggerType == "Interval" && trigger.IntervalTime > 0)
             {

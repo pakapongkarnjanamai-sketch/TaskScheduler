@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskScheduler.Core.Models
 {
-    public class TaskStepExecutionLog : BaseEntity
+    public class StepExecutionLog : BaseEntity
     {
         // ผูกกับ Log หลักของการรันรอบนั้น
         public int TaskExecutionLogId { get; set; }

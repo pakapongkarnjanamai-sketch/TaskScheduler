@@ -9,29 +9,29 @@ namespace TaskScheduler.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TaskStepsController : ControllerBase
+    public class StepsController : ControllerBase
     {
         private readonly TaskSchedulerDbContext _context;
 
-        public TaskStepsController(TaskSchedulerDbContext context)
+        public StepsController(TaskSchedulerDbContext context)
         {
             _context = context;
         }
 
-        // GET: api/TaskSteps/Get
+        // GET: api/Steps/Get
         [HttpGet("Get")]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
             // ใช้ DataSourceLoader เพื่อรองรับการ Filter, Sort, Page จาก Frontend โดยอัตโนมัติ
             // Frontend จะส่ง Filter TaskId มาให้เองผ่าน loadOptions
-            return DataSourceLoader.Load(_context.TaskSteps, loadOptions);
+            return DataSourceLoader.Load(_context.Steps, loadOptions);
         }
 
-        // POST: api/TaskSteps/Post
+        // POST: api/Steps/Post
         [HttpPost("Post")]
         public async Task<IActionResult> Post([FromForm] string values)
         {
-            var newStep = new TaskStep();
+            var newStep = new Step();
 
             // แปลง JSON string เป็น Object
             JsonConvert.PopulateObject(values, newStep);
@@ -39,19 +39,19 @@ namespace TaskScheduler.API.Controllers
             if (!TryValidateModel(newStep))
                 return BadRequest(ModelState);
 
-            _context.TaskSteps.Add(newStep);
+            _context.Steps.Add(newStep);
             await _context.SaveChangesAsync();
 
             return Ok(newStep);
         }
 
-        // PUT: api/TaskSteps/Put
+        // PUT: api/Steps/Put
         [HttpPut("Put")]
         public async Task<IActionResult> Put([FromForm] int key, [FromForm] string values)
         {
-            var step = await _context.TaskSteps.FindAsync(key);
+            var step = await _context.Steps.FindAsync(key);
             if (step == null)
-                return StatusCode(409, "TaskStep not found");
+                return StatusCode(409, "Step not found");
 
             // อัปเดตข้อมูลเฉพาะ field ที่มีการเปลี่ยนแปลง
             JsonConvert.PopulateObject(values, step);
@@ -64,15 +64,15 @@ namespace TaskScheduler.API.Controllers
             return Ok(step);
         }
 
-        // DELETE: api/TaskSteps/Delete
+        // DELETE: api/Steps/Delete
         [HttpDelete("Delete")]
         public async Task<IActionResult> Delete([FromForm] int key)
         {
-            var step = await _context.TaskSteps.FindAsync(key);
+            var step = await _context.Steps.FindAsync(key);
             if (step == null)
-                return StatusCode(409, "TaskStep not found");
+                return StatusCode(409, "Step not found");
 
-            _context.TaskSteps.Remove(step);
+            _context.Steps.Remove(step);
             await _context.SaveChangesAsync();
 
             return Ok();

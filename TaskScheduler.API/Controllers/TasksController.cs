@@ -62,7 +62,7 @@ namespace TaskScheduler.API.Controllers
         [HttpPost("Post")]
         public async Task<IActionResult> Post([FromForm] string values)
         {
-            var task = new ScheduledTask();
+            var task = new Core.Models.Task();
             JsonConvert.PopulateObject(values, task);
 
             if (!TryValidateModel(task))

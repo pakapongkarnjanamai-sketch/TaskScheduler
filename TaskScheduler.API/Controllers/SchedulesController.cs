@@ -10,30 +10,30 @@ namespace TaskScheduler.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TaskTriggersController : ControllerBase
+    public class SchedulesController : ControllerBase
     {
         private readonly TaskSchedulerDbContext _context;
 
-        public TaskTriggersController(TaskSchedulerDbContext context)
+        public SchedulesController(TaskSchedulerDbContext context)
         {
             _context = context;
         }
 
-        // URL: api/TaskTriggers/Get?taskId=...
+        // URL: api/Schedules/Get?taskId=...
         [HttpGet("Get")]
         public object Get(DataSourceLoadOptions loadOptions)
         {
      
-            var source = _context.TaskTriggers.AsQueryable();
+            var source = _context.Schedules.AsQueryable();
 
             return DataSourceLoader.Load(source, loadOptions);
         }
 
-        // URL: api/TaskTriggers/Post
+        // URL: api/Schedules/Post
         [HttpPost("Post")]
         public async Task<IActionResult> Post([FromForm] string values)
         {
-            var trigger = new TaskTrigger();
+            var trigger = new Schedule();
             JsonConvert.PopulateObject(values, trigger);
 
             if (!TryValidateModel(trigger))
@@ -41,17 +41,17 @@ namespace TaskScheduler.API.Controllers
 
             CalculateNextRun(trigger);
 
-            _context.TaskTriggers.Add(trigger);
+            _context.Schedules.Add(trigger);
             await _context.SaveChangesAsync();
 
             return Ok(trigger);
         }
 
-        // URL: api/TaskTriggers/Put
+        // URL: api/Schedules/Put
         [HttpPut("Put")]
         public async Task<IActionResult> Put([FromForm] int key, [FromForm] string values)
         {
-            var trigger = await _context.TaskTriggers.FindAsync(key);
+            var trigger = await _context.Schedules.FindAsync(key);
             if (trigger == null)
                 return NotFound();
 
@@ -67,22 +67,22 @@ namespace TaskScheduler.API.Controllers
             return Ok(trigger);
         }
 
-        // URL: api/TaskTriggers/Delete
+        // URL: api/Schedules/Delete
         [HttpDelete("Delete")]
         public async Task<IActionResult> Delete([FromForm] int key)
         {
-            var trigger = await _context.TaskTriggers.FindAsync(key);
+            var trigger = await _context.Schedules.FindAsync(key);
             if (trigger == null)
                 return NotFound();
 
-            _context.TaskTriggers.Remove(trigger);
+            _context.Schedules.Remove(trigger);
             await _context.SaveChangesAsync();
 
             return Ok();
         }
 
         // 🟢 Logic คำนวณเวลา Next Run (ระดับนาที)
-        private void CalculateNextRun(TaskTrigger trigger)
+        private void CalculateNextRun(Schedule trigger)
         {
             var now = DateTime.UtcNow.AddHours(7);
 

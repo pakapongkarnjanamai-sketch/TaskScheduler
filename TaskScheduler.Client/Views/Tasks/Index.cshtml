@@ -27,10 +27,10 @@
 
             var stepsStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
-                loadUrl: serviceUrl + "TaskSteps/Get",
-                insertUrl: serviceUrl + "TaskSteps/Post",
-                updateUrl: serviceUrl + "TaskSteps/Put",
-                deleteUrl: serviceUrl + "TaskSteps/Delete",
+                loadUrl: serviceUrl + "Steps/Get",
+                insertUrl: serviceUrl + "Steps/Post",
+                updateUrl: serviceUrl + "Steps/Put",
+                deleteUrl: serviceUrl + "Steps/Delete",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
                 }
@@ -38,10 +38,10 @@
 
             var triggersStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
-                loadUrl: serviceUrl + "TaskTriggers/Get",
-                insertUrl: serviceUrl + "TaskTriggers/Post",
-                updateUrl: serviceUrl + "TaskTriggers/Put",
-                deleteUrl: serviceUrl + "TaskTriggers/Delete",
+                loadUrl: serviceUrl + "Schedules/Get",
+                insertUrl: serviceUrl + "Schedules/Post",
+                updateUrl: serviceUrl + "Schedules/Put",
+                deleteUrl: serviceUrl + "Schedules/Delete",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
                 }
@@ -57,7 +57,7 @@
 
             var stepLogsStore = DevExpress.data.AspNet.createStore({
                 key: "Id",
-                loadUrl: serviceUrl + "TaskStepExecutionLogs/Get",
+                loadUrl: serviceUrl + "StepExecutionLogs/Get",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
                 }
@@ -118,7 +118,7 @@
                         $("<div>").dxTabPanel({
                             items: [
                                 {
-                                    title: "Workflow Steps",
+                                    title: "Steps",
                                     template: function(data, index, element) {
                                         createStepsGrid(element, taskId);
                                     }
@@ -323,7 +323,7 @@
                                     colSpan: 2,
                                     items: [
                                         "Order",
-                                        "Name",
+                                        "Name","Description",
                                         "HttpMethod"
                                     ]
                                 },
@@ -364,6 +364,10 @@
                             dataField: "Name",
                             caption: "Step Name",
                             validationRules: [{ type: "required" }]
+                        },
+                         {
+                            dataField: "Description",
+                            caption: "Description",
                         },
                         {
                             dataField: "HttpMethod",
@@ -419,6 +423,15 @@
                     },
 
                     columns: [
+                         {
+                            dataField: "Name",
+                            caption: "Schedules Name",
+                            validationRules: [{ type: "required" }]
+                        },
+                         {
+                            dataField: "Description",
+                            caption: "Description",
+                        },
                         {
                             dataField: "IsActive",
                             caption: "Active",

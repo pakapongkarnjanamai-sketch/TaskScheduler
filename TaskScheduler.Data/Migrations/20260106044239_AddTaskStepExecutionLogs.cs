@@ -12,7 +12,7 @@ namespace TaskScheduler.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "TaskStepExecutionLogs",
+                name: "StepExecutionLogs",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -43,7 +43,7 @@ namespace TaskScheduler.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_TaskStepExecutionLogs_TaskExecutionLogId",
-                table: "TaskStepExecutionLogs",
+                table: "StepExecutionLogs",
                 column: "TaskExecutionLogId");
         }
 
@@ -51,7 +51,7 @@ namespace TaskScheduler.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "TaskStepExecutionLogs");
+                name: "StepExecutionLogs");
         }
     }
 }

@@ -31,7 +31,7 @@ namespace TaskScheduler.API.Workers
                         var taskRunner = scope.ServiceProvider.GetRequiredService<TaskRunnerService>();
 
                         // ✅ 2. ค้นหา Trigger ที่ถึงเวลาทำงานแล้ว (NextExecutionTime <= thaiNow)
-                        var dueTriggers = context.TaskTriggers
+                        var dueTriggers = context.Schedules
                             .Where(t => t.IsActive && t.NextExecutionTime <= thaiNow)
                             .ToList(); // ดึงมาเป็น List ก่อนเพื่อหลีกเลี่ยง Concurrency ปัญหาของ EF
 

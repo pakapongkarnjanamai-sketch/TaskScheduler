@@ -3,10 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TaskScheduler.Core.Models
 {
-    public class TaskTrigger : BaseEntity
+    public class Schedule : BaseEntity
     {
         public int TaskId { get; set; }
-
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
         // ประเภท: "Interval" (วนซ้ำตามนาที), "Daily" (รันทุกวันตามเวลา)
         [Required]
         public string TriggerType { get; set; } = "Interval";
@@ -18,6 +19,6 @@ namespace TaskScheduler.Core.Models
         public DateTime? NextExecutionTime { get; set; }
         public DateTime? LastExecutionTime { get; set; }
 
-        public ScheduledTask? Task { get; set; }
+        public Task? Task { get; set; }
     }
 }
