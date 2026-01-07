@@ -426,11 +426,18 @@
                                 min: 1
                             }
                         },
-                        {
-                            dataField: "StartTime",
-                            caption: "Start Time",
-                            width: 120
-                        },
+                       
+                         {
+                                        dataField: "StartTime",
+                                        caption: "Start Time",
+                                        editorType: "dxDateBox",
+                                        width: 120,
+                                        editorOptions: {
+                                            type: "time",
+                                            // displayFormat: "HH:mm",
+                                            interval: 30
+                                        }
+                                    },
                         {
                             dataField: "NextExecutionTime",
                             caption: "Next Run",
@@ -483,6 +490,7 @@
                                 format: "dd/MM/yyyy HH:mm:ss",
                                 width: 160
                             },
+
                             {
                                 dataField: "StepName",
                                 caption: "Step Name",
