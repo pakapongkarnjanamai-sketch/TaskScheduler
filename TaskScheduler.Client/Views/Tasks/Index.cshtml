@@ -145,11 +145,15 @@
                     popup: {
                         title: "Task Information",
                         showTitle: true,
-                        width: 600,
-                        height: 400
+                            width: 800,
+                            height: 650
                     },
                     form: {
                         items: [
+                            {
+                                    itemType: "group",
+                                    colSpan: 2,
+                                    items: [
                             {
                                 itemType: "group",
                                 caption: "General",
@@ -166,6 +170,7 @@
                                     }
                                 }]
                             }
+                        ]     }
                         ]
                     }
                 },
@@ -304,15 +309,18 @@
                         popup: {
                             title: "Step Configuration",
                             showTitle: true,
-                            width: 700,
-                            height: 550
+                            width: 800,
+                            height: 650
                         },
                         form: {
-                            items: [
+                            items: [ {
+                                    itemType: "group",
+                                    colSpan: 2,
+                                    items: [
                                 {
                                     itemType: "group",
                                     caption: "Basic Info",
-                                    colCount: 2,
+                                    colSpan: 2,
                                     items: [
                                         "Order",
                                         "Name",
@@ -322,6 +330,7 @@
                                 {
                                     itemType: "group",
                                     caption: "Request",
+                                    colSpan: 2,
                                     items: [
                                         "ApiUrl",
                                         {
@@ -336,6 +345,8 @@
                                         }
                                     ]
                                 }
+                            ]
+                            }
                             ]
                         }
                     },
@@ -409,6 +420,12 @@
 
                     columns: [
                         {
+                            dataField: "IsActive",
+                            caption: "Active",
+                            dataType: "boolean",
+                            width: 80
+                        },
+                        {
                             dataField: "TriggerType",
                             caption: "Type",
                             width: 120,
@@ -417,27 +434,76 @@
                             },
                             validationRules: [{ type: "required" }]
                         },
-                        {
-                            dataField: "IntervalTime",
-                            caption: "Interval",
-                            dataType: "number",
-                            width: 120,
-                            editorOptions: {
-                                min: 1
-                            }
-                        },
-                       
-                         {
-                                        dataField: "StartTime",
-                                        caption: "Start Time",
-                                        editorType: "dxDateBox",
-                                        width: 120,
-                                        editorOptions: {
-                                            type: "time",
-                                            // displayFormat: "HH:mm",
-                                            interval: 30
-                                        }
-                                    },
+                                      {
+            dataField: "IntervalTime",
+            caption: "Interval",
+            dataType: "number",
+            width: 140, // ปรับความกว้างเพิ่มเล็กน้อยให้พอดีข้อความภาษาอังกฤษ
+            alignment: "center",
+
+            // ใช้ cellTemplate เพื่อตรวจสอบ TriggerType และใส่หน่วยภาษาอังกฤษให้ถูกต้อง
+            cellTemplate: function(container, options) {
+                var value = options.value;
+
+                // ถ้าไม่มีค่า ให้แสดงขีด "-"
+                if (value === null || value === undefined) {
+                    $("<span>").text("-").appendTo(container);
+                    return;
+                }
+
+                // ดึงค่า TriggerType ของแถวนั้นๆ มาตรวจสอบ
+                var type = options.data.TriggerType;
+                var unit = "";
+
+                // กำหนดหน่วยภาษาอังกฤษตามประเภท
+                if (type === "Interval") {
+                    unit = " Minutes";
+                } else if (type === "Daily") {
+                    unit = " Days";
+                } else if (type === "Weekly") {
+                    unit = " Weeks";
+                } else if (type === "Monthly") {
+                    unit = " Months";
+                }
+
+                // แสดงผล ตัวเลข + หน่วย (เช่น "30 Minutes", "1 Days")
+                $("<span>")
+                    .text(value + unit)
+                    .appendTo(container);
+            },
+
+            // ส่วนของการแก้ไขข้อมูล (Editor)
+            editorOptions: {
+                min: 1,                 // ห้ามต่ำกว่า 1
+                showSpinButtons: true,  // มีปุ่มลูกศรขึ้นลง
+                step: 1
+            }
+        },
+
+                               {
+            dataField: "StartTime",
+            caption: "Start Time",
+            width: 120,
+            alignment: "center", // จัดกึ่งกลางเพื่อความสวยงาม
+            editorType: "dxDateBox",
+
+            // 1. จัดรูปแบบการแสดงผลในตาราง (Grid) ให้เป็น HH:mm
+            customizeText: function(cellInfo) {
+                if (!cellInfo.value) return "";
+                // ค่า TimeSpan มักจะมาเป็น string "HH:mm:ss" เราตัดเอาแค่ 5 ตัวแรก
+                return cellInfo.value.substring(0, 5);
+            },
+
+            // 2. ปรับปรุงตัวเลือกเวลา (Editor)
+            editorOptions: {
+                type: "time",
+                displayFormat: "HH:mm",     
+                pickerType: "calendar",      
+                interval: 30,              
+                useMaskBehavior: true,    
+                invalidDateMessage: "The time must have the following format: HH:mm"
+            }
+        },
                         {
                             dataField: "NextExecutionTime",
                             caption: "Next Run",
@@ -446,12 +512,7 @@
                             allowEditing: false,
                             width: 150
                         },
-                        {
-                            dataField: "IsActive",
-                            caption: "Active",
-                            dataType: "boolean",
-                            width: 80
-                        }
+                        
                     ],
 
                     onInitNewRow: function(e) {
