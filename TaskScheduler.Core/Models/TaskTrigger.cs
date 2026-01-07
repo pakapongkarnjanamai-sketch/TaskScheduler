@@ -11,7 +11,7 @@ namespace TaskScheduler.Core.Models
         [Required]
         public string TriggerType { get; set; } = "Interval";
 
-        public int? IntervalMinutes { get; set; } // สำหรับแบบ Interval
+        public int? IntervalTime { get; set; } // สำหรับแบบ Interval
         public TimeSpan? StartTime { get; set; }  // สำหรับแบบ Daily
 
         // ✅ เพิ่มฟิลด์สำคัญ (ต้องมีเพื่อให้ Scheduler ทำงานถูก)

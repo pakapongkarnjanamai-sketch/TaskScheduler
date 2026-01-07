@@ -20,7 +20,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // ✅ เพิ่ม Service สำหรับรัน Task
 builder.Services.AddScoped<TaskRunnerService>();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options => {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+    });
 // ✅ เพิ่ม Background Service (Scheduler)
 builder.Services.AddHostedService<SchedulerWorker>();
 builder.Services.AddCors(options =>

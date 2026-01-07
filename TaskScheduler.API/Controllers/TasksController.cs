@@ -23,35 +23,37 @@ namespace TaskScheduler.API.Controllers
         [HttpGet("Get")]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
+            // ใช้ DataSourceLoader เพื่อจัดการ filter/sort/page จาก Grid
+            // ปรับปรุง: ใช้ Select เพื่อรวมข้อมูล Status, LastRun, NextRun เข้าไปในผลลัพธ์
             var source = _context.Tasks.AsNoTracking()
-                  .Select(t => new {
-                      t.Id,
-                      t.Name,
-                      t.Description,
-                      t.IsActive,
-                      t.UpdatedAt,
+                .Select(t => new {
+                    t.Id,
+                    t.Name,
+                    t.Description,
+                    t.IsActive,
+                    t.UpdatedAt,
 
-                      // 1. ดึง Status ล่าสุดจาก Log ที่เวลา StartTime มากที่สุด
-                      LastStatus = _context.TaskExecutionLogs
-                                      .Where(l => l.TaskId == t.Id)
-                                      .OrderByDescending(l => l.StartTime)
-                                      .Select(l => l.Status)
-                                      .FirstOrDefault(),
+                    // 1. สถานะล่าสุด: ดึงจาก Log ที่มี StartTime ล่าสุด
+                    LastStatus = _context.TaskExecutionLogs
+                                    .Where(l => l.TaskId == t.Id)
+                                    .OrderByDescending(l => l.StartTime)
+                                    .Select(l => l.Status)
+                                    .FirstOrDefault(),
 
-                      // 2. ดึงเวลาทำงานล่าสุด
-                      LastExecutionTime = _context.TaskExecutionLogs
-                                      .Where(l => l.TaskId == t.Id)
-                                      .OrderByDescending(l => l.StartTime)
-                                      .Select(l => l.StartTime)
-                                      .FirstOrDefault(),
+                    // 2. เวลาทำงานล่าสุด: ดึงจาก Log ตัวเดียวกัน
+                    LastExecutionTime = _context.TaskExecutionLogs
+                                    .Where(l => l.TaskId == t.Id)
+                                    .OrderByDescending(l => l.StartTime)
+                                    .Select(l => l.StartTime)
+                                    .FirstOrDefault(),
 
-                      // 3. ดึงเวลาที่จะทำงานถัดไป (เอาเวลาที่น้อยที่สุดจาก Trigger ที่เปิดใช้งาน)
-                      NextExecutionTime = t.Triggers
-                                      .Where(tr => tr.IsActive)
-                                      .OrderBy(tr => tr.NextExecutionTime)
-                                      .Select(tr => tr.NextExecutionTime)
-                                      .FirstOrDefault()
-                  });
+                    // 3. เวลาทำงานถัดไป: ดึงเวลาที่น้อยที่สุดจาก Trigger ที่ Active อยู่
+                    NextExecutionTime = t.Triggers
+                                    .Where(tr => tr.IsActive)
+                                    .OrderBy(tr => tr.NextExecutionTime)
+                                    .Select(tr => tr.NextExecutionTime)
+                                    .FirstOrDefault()
+                });
 
             return DataSourceLoader.Load(source, loadOptions);
         }

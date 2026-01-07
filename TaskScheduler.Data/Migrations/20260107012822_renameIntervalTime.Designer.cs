@@ -12,8 +12,8 @@ using TaskScheduler.Data;
 namespace TaskScheduler.Data.Migrations
 {
     [DbContext(typeof(TaskSchedulerDbContext))]
-    [Migration("20260106014559_AddTaskSteps")]
-    partial class AddTaskSteps
+    [Migration("20260107012822_renameIntervalTime")]
+    partial class renameIntervalTime
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -171,6 +171,61 @@ namespace TaskScheduler.Data.Migrations
                     b.ToTable("TaskSteps", (string)null);
                 });
 
+            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStepExecutionLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResponseMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StepName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TaskExecutionLogId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskExecutionLogId");
+
+                    b.ToTable("TaskStepExecutionLogs");
+                });
+
             modelBuilder.Entity("TaskScheduler.Core.Models.TaskTrigger", b =>
                 {
                     b.Property<int>("Id")
@@ -242,6 +297,17 @@ namespace TaskScheduler.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("TaskScheduler.Core.Models.TaskStepExecutionLog", b =>
+                {
+                    b.HasOne("TaskScheduler.Core.Models.TaskExecutionLog", "TaskExecutionLog")
+                        .WithMany()
+                        .HasForeignKey("TaskExecutionLogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaskExecutionLog");
                 });
 
             modelBuilder.Entity("TaskScheduler.Core.Models.TaskTrigger", b =>

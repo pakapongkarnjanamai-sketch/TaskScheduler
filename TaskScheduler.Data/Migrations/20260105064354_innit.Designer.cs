@@ -152,7 +152,7 @@ namespace TaskScheduler.Data.Migrations
                     b.Property<string>("CronExpression")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("IntervalMinutes")
+                    b.Property<int?>("IntervalTime")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")

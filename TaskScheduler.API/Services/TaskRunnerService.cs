@@ -52,7 +52,7 @@ namespace TaskScheduler.API.Services
             await _context.SaveChangesAsync(); // Save เพื่อให้ได้ mainExecutionLog.Id มาใช้ต่อ
 
             // [SignalR] แจ้ง Client ว่าเริ่มทำงานแล้ว (Status: Running)
-            await _hubContext.Clients.All.SendAsync("ReceiveTaskUpdate", trigger.TaskId, new
+           await _hubContext.Clients.All.SendAsync("ReceiveTaskUpdate", trigger.TaskId, new
             {
                 LastStatus = "Running",
                 LastExecutionTime = thaiNowMinute
@@ -169,9 +169,9 @@ namespace TaskScheduler.API.Services
 
         private void CalculateNextRun(TaskTrigger trigger, DateTime baseTime)
         {
-            if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
+            if (trigger.TriggerType == "Interval" && trigger.IntervalTime > 0)
             {
-                trigger.NextExecutionTime = baseTime.AddMinutes(trigger.IntervalMinutes.Value);
+                trigger.NextExecutionTime = baseTime.AddMinutes(trigger.IntervalTime.Value);
             }
             else if (trigger.TriggerType == "Daily" && trigger.StartTime.HasValue)
             {

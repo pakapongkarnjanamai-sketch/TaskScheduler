@@ -110,7 +110,21 @@
                     enabled: true,
                     fileName: "Tasks"
                 },
+                onExporting: function(e) {
+                    var workbook = new ExcelJS.Workbook();
+                    var worksheet = workbook.addWorksheet('Tasks');
 
+                    DevExpress.excelExporter.exportDataGrid({
+                        component: e.component,
+                        worksheet: worksheet,
+                        autoFilterEnabled: true
+                    }).then(function() {
+                        workbook.xlsx.writeBuffer().then(function(buffer) {
+                            saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'Tasks.xlsx');
+                        });
+                    });
+                    e.cancel = true;
+                },
                 // Master-Detail
                 masterDetail: {
                     enabled: true,
@@ -179,6 +193,12 @@
                         width: 70,
                         allowEditing: false
                     },
+                     {
+                        dataField: "IsActive",
+                        caption: "Active",
+                        dataType: "boolean",
+                        width: 80
+                    },
                     {
                         dataField: "Name",
                         caption: "Task Name",
@@ -191,7 +211,7 @@
                     // --- เพิ่มส่วนนี้ ---
                     {
                         dataField: "LastStatus",
-                        caption: "Latest Status",
+                        caption: "Status",
                         width: 100,
                         alignment: "center",
                         allowEditing: false, // ห้ามแก้ไขค่านี้
@@ -228,12 +248,7 @@
                         allowEditing: false
                     },
                     // ------------------
-                    {
-                        dataField: "IsActive",
-                        caption: "Active",
-                        dataType: "boolean",
-                        width: 80
-                    },
+                   
                     {
                         dataField: "UpdatedAt",
                         caption: "Last Updated",
@@ -419,7 +434,7 @@
                             validationRules: [{ type: "required" }]
                         },
                         {
-                            dataField: "IntervalMinutes",
+                            dataField: "IntervalTime",
                             caption: "Interval",
                             dataType: "number",
                             width: 120,
@@ -499,14 +514,23 @@
                                 dataField: "Status",
                                 caption: "Status",
                                 width: 100,
-                                cellTemplate: function(container, options) {
-                                    var color = ["Error", "Failed"].includes(options.value) ? "red" : "green";
-                                    $("<span>")
-                                        .css("color", color)
-                                        .css("font-weight", "bold")
-                                        .text(options.value)
-                                        .appendTo(container);
-                                }
+                               
+                                   cellTemplate: function(container, options) {
+                            var status = options.value;
+                            if (!status) return;
+
+                            var color = "grey";
+                            if (status === "Success") color = "#28a745";      // สีเขียว
+                            else if (status === "Failed") color = "#dc3545";  // สีแดง
+                            else if (status === "Error") color = "#dc3545";  // สีแดง
+                            else if (status === "Running") color = "#007bff"; // สีน้ำเงิน
+
+                            $("<span>")
+                                .css("color", color)
+                                .css("font-weight", "bold")
+                                .text(status)
+                                .appendTo(container);
+                        }
                             },
                             {
                                 dataField: "ResponseMessage",
@@ -575,14 +599,23 @@
                                 {
                                     dataField: "Status",
                                     width: 100,
+                              
                                     cellTemplate: function(container, options) {
-                                    var color = ["Error", "Failed"].includes(options.value) ? "red" : "green";
-                                    $("<span>")
-                                        .css("color", color)
-                                        .css("font-weight", "bold")
-                                        .text(options.value)
-                                        .appendTo(container);
-                                }
+                            var status = options.value;
+                            if (!status) return;
+
+                            var color = "grey";
+                            if (status === "Success") color = "#28a745";      // สีเขียว
+                            else if (status === "Failed") color = "#dc3545";  // สีแดง
+                            else if (status === "Error") color = "#dc3545";  // สีแดง
+                            else if (status === "Running") color = "#007bff"; // สีน้ำเงิน
+
+                            $("<span>")
+                                .css("color", color)
+                                .css("font-weight", "bold")
+                                .text(status)
+                                .appendTo(container);
+                        }
                                 },
                                 {
                                     dataField: "ResponseMessage",

@@ -4,7 +4,9 @@ namespace TaskScheduler.API.Hubs
 {
     public class TaskHub : Hub
     {
-        // คลาสนี้เอาไว้สำหรับ Client Connect เข้ามา
-        // เราสามารถเพิ่ม method ได้ถ้า Client ต้องการส่งข้อมูลกลับมา
+        public async Task SendUpdate(string message)
+        {
+            await Clients.All.SendAsync("ReceiveTaskUpdate", message);
+        }
     }
 }

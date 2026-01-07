@@ -144,7 +144,7 @@ namespace TaskScheduler.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("IntervalMinutes")
+                    b.Property<int?>("IntervalTime")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")

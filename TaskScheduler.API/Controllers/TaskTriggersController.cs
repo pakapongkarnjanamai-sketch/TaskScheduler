@@ -89,10 +89,10 @@ namespace TaskScheduler.API.Controllers
             // ✅ ตัดวินาทีและมิลลิวินาทีทิ้ง ให้เหลือแค่ระดับนาที
             var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
 
-            if (trigger.TriggerType == "Interval" && trigger.IntervalMinutes > 0)
+            if (trigger.TriggerType == "Interval" && trigger.IntervalTime > 0)
             {
                 // บวกนาทีจากเวลาปัจจุบันที่ตัดวินาทีแล้ว
-                trigger.NextExecutionTime = nowMinute.AddMinutes(trigger.IntervalMinutes.Value);
+                trigger.NextExecutionTime = nowMinute.AddMinutes(trigger.IntervalTime.Value);
             }
             else if (trigger.TriggerType == "Daily" && trigger.StartTime.HasValue)
             {
