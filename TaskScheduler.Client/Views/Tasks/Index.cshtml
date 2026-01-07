@@ -68,6 +68,8 @@
                 .withAutomaticReconnect()
                 .build();
                 connection.on("ReceiveTaskUpdate", function (taskId, data) {
+                console.log("SignalR Update Received:", taskId);
+                console.log("Data Update:", data);
                 // ใช้ความสามารถ push ของ Store เพื่ออัปเดตข้อมูลใน Grid ทันทีโดยไม่ต้องโหลดใหม่
                 tasksStore.push([{
                     type: "update",
@@ -106,25 +108,7 @@
                     visible: true
                 },
 
-                export: {
-                    enabled: true,
-                    fileName: "Tasks"
-                },
-                onExporting: function(e) {
-                    var workbook = new ExcelJS.Workbook();
-                    var worksheet = workbook.addWorksheet('Tasks');
-
-                    DevExpress.excelExporter.exportDataGrid({
-                        component: e.component,
-                        worksheet: worksheet,
-                        autoFilterEnabled: true
-                    }).then(function() {
-                        workbook.xlsx.writeBuffer().then(function(buffer) {
-                            saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'Tasks.xlsx');
-                        });
-                    });
-                    e.cancel = true;
-                },
+             
                 // Master-Detail
                 masterDetail: {
                     enabled: true,
