@@ -69,16 +69,18 @@
                 // .withUrl("https://localhost:7253/taskHub") 
                 .withAutomaticReconnect()
                 .build();
+
+
                 connection.on("ReceiveTaskUpdate", function (taskId, data) {
-                console.log("SignalR Update Received:", taskId);
-                console.log("Data Update:", data);
-                // ใช้ความสามารถ push ของ Store เพื่ออัปเดตข้อมูลใน Grid ทันทีโดยไม่ต้องโหลดใหม่
-                tasksStore.push([{
-                    type: "update",
-                    key: taskId,
-                    data: data // ข้อมูล object ที่ส่งมาจาก Backend (LastStatus, LastRun, NextRun)
-                }]);
-            });
+                    console.log("SignalR Update Received:", taskId);
+                    console.log("Data Update:", data);
+                    // ใช้ความสามารถ push ของ Store เพื่ออัปเดตข้อมูลใน Grid ทันทีโดยไม่ต้องโหลดใหม่
+                    tasksStore.push([{
+                        type: "update",
+                        key: taskId,
+                        data: data // ข้อมูล object ที่ส่งมาจาก Backend (LastStatus, LastRun, NextRun)
+                    }]);
+                });
 
             // เริ่มการเชื่อมต่อ
             connection.start().then(function () {
@@ -513,7 +515,7 @@
             editorOptions: {
                 type: "time",
                 displayFormat: "HH:mm",     
-                pickerType: "calendar",      
+                pickerType: "native",      
                 interval: 30,              
                 useMaskBehavior: true,    
                 invalidDateMessage: "The time must have the following format: HH:mm"

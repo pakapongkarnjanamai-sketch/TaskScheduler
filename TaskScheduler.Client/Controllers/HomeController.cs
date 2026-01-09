@@ -7,13 +7,12 @@ using TaskScheduler.Core.Models;
 
 namespace TaskScheduler.Client.Controllers
 {
-    public class TasksController : Controller
+    public class HomeController : Controller
     {
-        private readonly IHttpClientFactory _clientFactory;
 
-        public TasksController(IHttpClientFactory clientFactory)
+        public HomeController()
         {
-            _clientFactory = clientFactory;
+        
         }
 
         // เปิดหน้าเว็บ (View)

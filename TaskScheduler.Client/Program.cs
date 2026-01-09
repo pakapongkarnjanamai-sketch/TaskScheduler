@@ -7,13 +7,6 @@ builder.Services.AddControllersWithViews()
 
 builder.Services.AddRazorPages();
 
-// ✅ ลงทะเบียน HttpClient สำหรับเรียก Backend API
-// ตรวจสอบ Port 5070 จากไฟล์ launchSettings.json ของโปรเจกต์ API
-builder.Services.AddHttpClient("TaskApi", client =>
-{
-    client.BaseAddress = new Uri("https://localhost:7253/");
-});
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -34,6 +27,6 @@ app.MapRazorPages().WithStaticAssets();
 // เพิ่ม Default Route สำหรับ Controller
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Tasks}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
