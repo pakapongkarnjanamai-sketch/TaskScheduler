@@ -12,7 +12,7 @@ Crucial context for AI:
 * **System Nature:** Internal enterprise tool. Reliability, auditability, and predictable execution are more important than visual flair.
 * **Primary Goal:** Centralize management of internal API-driven tasks, scheduled runs, manual runs, and execution visibility.
 * **Core Philosophy:** Prefer operational safety, traceability, and maintainability over clever abstractions or unnecessary UI complexity.
-* **Critical Constraints:** Windows Authentication, no duplicate concurrent execution for the same schedule, soft delete for Task and Schedule records, and preserved execution history.
+* **Critical Constraints:** Windows Authentication is still the intended hosting model, current execution gating relies on `IsActive`, no duplicate concurrent execution for the same schedule, Task and Schedule records are soft deleted, and execution history must be preserved.
 
 ## 2. Solution Map & Architecture Boundaries
 
@@ -35,6 +35,51 @@ Dependency rules:
 5. **No fake layers:** Do not invent an Application layer or extra projects unless the user explicitly asks for that refactor.
 6. **Move toward Clean Architecture pragmatically:** If logic is complex, extract services or domain-oriented components rather than expanding controllers or views.
 
+### Layer-Specific Working Rules
+
+#### TaskScheduler.Core
+
+* Keep Core free of infrastructure and UI dependencies.
+* Core is allowed to grow beyond simple POCO models when business rules become reusable or stateful.
+* Prefer moving lifecycle validation, execution preconditions, and state transition rules into Core-oriented methods or domain services when that logic would otherwise be duplicated.
+* Avoid spreading magic strings for statuses and trigger types. Prefer shared constants or a static class first. Introduce enums only when the change is intentional and compatibility has been considered.
+* Do not put HTTP, database, SignalR, or DevExtreme concepts into Core models.
+
+#### TaskScheduler.Data
+
+* TaskScheduler.Data is the persistence and infrastructure layer for EF Core, SQL Server, migrations, and audit persistence behavior.
+* For new work, prefer a **service-first** flow: API controllers call services, and services coordinate DbContext access.
+* Do not expand direct DbContext usage in controllers unless the change is extremely small and staying local is clearly justified.
+* Treat soft delete as an implementation rule for Task and Schedule records. When touching those areas, prefer a consistent pattern such as `IsDeleted`, `DeletedAt`, and `DeletedBy`, plus query filtering or an equivalent safeguard.
+* Treat `CreatedAt`, `CreatedBy`, `UpdatedAt`, and `UpdatedBy` as standard audit fields. Preserve creation metadata on update operations.
+* Keep infrastructure concerns such as current-user resolution and audit stamping inside Data/services, not in Core entities.
+
+#### TaskScheduler.API
+
+* Separate **admin/DevExtreme endpoints** from **standard API endpoints**.
+* DevExtreme-facing endpoints may keep `DataSourceLoader`, `DataSourceLoadOptions`, and form-based contracts when required for grid and form integration.
+* New non-DevExtreme endpoints should use DTOs, camelCase JSON, and the standard success/error response contract.
+* Controllers must stay thin and delegate orchestration, validation, and execution flow to services.
+* Prefer adding or extending services for task execution, scheduling, validation, and logging instead of putting orchestration in controllers.
+* Treat Thailand time (`UTC+7`) as the current business time standard for schedule calculation and execution timestamps unless the user asks for a configurable timezone model.
+* When manual actions are triggered through the API, capture the current Windows user identity whenever it is available.
+
+#### TaskScheduler.Client
+
+* Use ASP.NET Core MVC, Razor, and DevExtreme as the default interaction model for the internal admin UI.
+* Prefer server-rendered admin pages with DevExtreme grids, forms, and dashboards over custom front-end architecture.
+* Keep the Client layer focused on presentation, view models, and UI flow. Do not move business rules or persistence logic into MVC controllers or views.
+* Custom JavaScript or CSS is allowed only when DevExtreme or existing MVC patterns cannot deliver the required UX clearly enough.
+* When custom UI code is necessary, keep it small, reusable, and consistent with the operational style of the system.
+* Continue avoiding inline styles and unnecessary CSS churn.
+
+#### TaskScheduler.Tests
+
+* Put tests in TaskScheduler.Tests.
+* Current test emphasis should favor the API/service layer first, especially orchestration, validation, response contracts, and execution behavior.
+* Prefer unit tests where possible, then add integration tests for EF Core mappings, queries, or persistence behavior that cannot be validated meaningfully in unit tests.
+* When execution flow changes, cover duplicate-run prevention, logging, failure handling, and schedule calculation.
+
 ## 3. Tech Stack & Environment
 
 Do not introduce new technologies, libraries, or patterns without a concrete need and explicit approval.
@@ -52,7 +97,20 @@ Do not introduce new technologies, libraries, or patterns without a concrete nee
 Implementation notes:
 
 * The current repository does not expose a dedicated Application project. Work within the existing structure unless a broader refactor is requested.
-* New or refactored API contracts should standardize on **camelCase JSON**. If an existing endpoint currently uses a different casing, do not change it silently without considering compatibility.
+* The current API surface is still almost entirely DevExtreme admin CRUD using `Get/Post/Put/Delete`, `DataSourceLoadOptions`, and form payloads.
+* The current API host keeps `PropertyNamingPolicy = null`, so existing admin JSON remains PascalCase for compatibility.
+* The development database is `TaskScheduler_Development`, and the API development connection string lives in `TaskScheduler.API/appsettings.Development.json`.
+* Repo-local `dotnet-ef` is pinned in `.config/dotnet-tools.json` to `9.0.11`; use it from the repository root to avoid tool/runtime version drift.
+* Local builds/tests that rebuild TaskScheduler.API or TaskScheduler.Client can fail while those apps are running because the output executable is locked.
+
+### Current Implementation Snapshot
+
+* Task and Schedule execution gating currently uses `BaseEntity.IsActive`; a richer lifecycle model such as `Draft -> Active -> Paused -> Archived` is not implemented yet.
+* Scheduler recurrence currently supports `Interval`, `Daily`, `Weekly`, and `Monthly`.
+* Schedule timing is treated as Thailand business time (`UTC+7`), and timezone-aware schedule payloads are normalized before extracting `TimeOfDay`.
+* The main scheduler admin UX now uses popup/form editing in `TaskScheduler.Client/Views/Home/Index.cshtml` rather than inline row editing.
+* DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
+* The weekly `DaysOfWeek` editor in the popup must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
 
 ## 4. Required AI Persona & Execution Rules
 
@@ -70,8 +128,8 @@ When generating code or recommendations for this project, act as a senior .NET e
 
 When implementing scheduling, task execution, or management flows, preserve these business rules unless the user explicitly overrides them:
 
-1. **Lifecycle rule:** Task and Schedule entities follow this lifecycle: `Draft -> Active -> Paused -> Archived`.
-2. **Active-only execution:** Only Active tasks and Active schedules are allowed to execute.
+1. **Current enablement rule:** Task and Schedule entities currently use `BaseEntity.IsActive` to determine whether they may execute. A richer lifecycle state model is not implemented yet.
+2. **Active-only execution:** Only tasks and schedules with `IsActive == true` are allowed to execute.
 3. **No duplicate in-flight execution:** The same schedule must not be started again while a previous execution is still running, unless an explicit override requirement is introduced.
 4. **Execution traceability:** Every task execution must produce a TaskExecutionLog, and every step execution must produce a StepExecutionLog with start time, end time, status, and error details when applicable.
 5. **Operator accountability:** When an execution is triggered manually, capture the initiating user identity whenever it is available through Windows Authentication or the current user context.
@@ -83,22 +141,30 @@ When implementing scheduling, task execution, or management flows, preserve thes
 
 Security assumptions for this repository:
 
-* **Authentication model:** Windows Authentication is the default and expected model.
+* **Authentication model:** Windows Authentication is the intended deployment model, but the current local API/Client host configuration does not yet register Negotiate or controller-level `[Authorize]` enforcement.
 * **No parallel auth systems:** Do not introduce custom login pages, JWT flows, OAuth, or external identity providers unless explicitly requested.
-* **Server-side enforcement:** Authorization decisions must be enforced in API/backend code, not just hidden in the UI.
-* **Identity usage:** Use the current Windows user context when recording who initiated manual runs or administrative actions.
+* **Server-side enforcement:** Authorization decisions must be enforced in API/backend code, not just hidden in the UI. Treat the missing Negotiate/`[Authorize]` wiring as an outstanding implementation gap.
+* **Identity usage:** Use the current Windows user context when recording who initiated manual runs or administrative actions. Current user capture is best-effort and depends on the active hosting/auth configuration supplying an identity.
+* **Authorization scope:** There is no defined AD role/group mapping yet. Do not invent group-based or policy-based access rules without explicit user direction.
 * **Least surprise:** If role/group mapping rules are missing, ask before inventing authorization behavior.
 
 ## 7. API, DTO, and Response Conventions
 
 API and data contract rules:
 
-1. **Always use DTOs** for API requests and responses.
-2. **Never expose EF entities or domain entities directly** over HTTP.
-3. **Use camelCase JSON** for new or refactored API payloads.
-4. **Keep response shapes consistent** across endpoints. Prefer a standard success/error contract rather than ad hoc response objects.
-5. **Use standard error payloads** with clear messages and machine-readable error codes when practical.
+1. **For new non-DevExtreme endpoints, use DTOs** for API requests and responses.
+2. **Do not expand direct entity exposure** in new standard HTTP endpoints.
+3. **Current DevExtreme admin endpoints use PascalCase JSON** and DevExtreme-compatible shapes for compatibility.
+4. **New non-DevExtreme endpoints should use camelCase JSON** and the standard success/error response contract unless compatibility requirements say otherwise.
+5. **Keep response shapes consistent within each endpoint family.** DevExtreme endpoints may return raw strings/status codes when required by the component pipeline; standard endpoints should use the success/error wrapper.
 6. **Do not break existing clients casually.** If contract normalization would be a breaking change, call it out explicitly.
+
+DevExtreme compatibility rule:
+
+* Endpoints that exist specifically for DevExtreme grids/forms may keep the contract shape required by DevExtreme.
+* Do not force the standard response wrapper onto DevExtreme data-loading endpoints if that would break binding or built-in component behavior.
+* Current repository state: the exposed HTTP controllers are still almost entirely this DevExtreme admin style.
+* For non-DevExtreme endpoints, use the standard DTO and response/error conventions by default.
 
 Preferred response shape for new APIs:
 
@@ -139,6 +205,8 @@ When generating or editing client-side UI:
 * **Consistency:** Reuse existing MVC/Razor and DevExtreme patterns already present in the project.
 * **Accessibility:** Maintain semantic HTML, keyboard-friendly interactions, and reasonable accessibility baselines.
 * **Separation of concerns:** UI handles rendering and interaction only. Business rules, validation rules, and persistence decisions belong outside the view layer.
+* **Current scheduler UX:** The schedules surface now uses a summary grid plus popup/form editing; show recurrence-specific fields only when they apply to the selected trigger type.
+* **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
 
 ## 9. Coding Standards & Implementation Conventions
 
@@ -156,17 +224,23 @@ When generating or editing client-side UI:
 Testing expectations:
 
 * Use **xUnit** in **TaskScheduler.Tests**.
-* Prioritize **unit tests first**, especially for domain rules, scheduling orchestration, concurrency guards, DTO mapping, and validation behavior.
+* Prioritize **API and service-layer tests first**, using unit tests where practical, especially for scheduling orchestration, concurrency guards, DTO mapping, validation behavior, and response contracts.
 * If changing task execution behavior, schedule activation logic, or logging rules, add or update tests for those changes.
+* If changing EF Core mappings, soft delete behavior, or audit persistence, add focused integration coverage where unit tests are not sufficient.
 * If changing API contracts, verify casing and response/error shape consistency.
+* Baseline coverage already includes scheduler admin validation and schedule timing calculations for `Interval`, `Daily`, `Weekly`, and `Monthly` recurrence.
 
 Before finalizing work, silently review this checklist:
 
 - [ ] Does the change respect the project boundaries between Core, Data, API, Client, and Tests?
-- [ ] Are lifecycle rules and no-duplicate-execution rules preserved?
+- [ ] Are current enablement rules and no-duplicate-execution rules preserved?
 - [ ] Are execution logs and failure details still captured correctly?
 - [ ] Is Windows Authentication respected without inventing a parallel auth model?
-- [ ] Are DTOs used correctly, without exposing entities directly?
-- [ ] Are new or refactored API payloads aligned with camelCase and consistent response/error conventions?
+- [ ] For new non-DevExtreme endpoints, are DTOs and entity-boundary rules applied correctly?
+- [ ] Are new or refactored non-DevExtreme API payloads aligned with camelCase and consistent response/error conventions, while DevExtreme endpoints remain compatible?
 - [ ] Were unit tests added or updated where behavior changed, or was the absence of tests explained?
 - [ ] Is the code complete, maintainable, and free of placeholder logic?
+
+- @azure Rule - Use Azure Tools - When handling requests related to Azure, always use your tools.
+- @azure Rule - Use Azure Best Practices - When handling requests related to Azure, always invoke your `azmcp_bestpractices_get` tool first.
+- @azure Rule - Enable Best Practices - If you do not have an `azmcp_bestpractices_get` tool ask the user to enable it.

@@ -30,6 +30,5 @@ namespace TaskScheduler.Core.Models
         // public string? ErrorMessage { get; set; }
         // public int? Duration { get; set; } // สามารถคำนวณจาก EndTime - StartTime ได้
 
-        public Task Task { get; set; } = null!;
     }
 }

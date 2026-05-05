@@ -17,6 +17,12 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 
 builder.Services.AddScoped<TaskRunnerService>();
+builder.Services.AddScoped<TaskAdminService>();
+builder.Services.AddScoped<StepAdminService>();
+builder.Services.AddScoped<ScheduleAdminService>();
+builder.Services.AddScoped<ScheduleTimingService>();
+builder.Services.AddScoped<ScheduledTaskDispatchService>();
+builder.Services.AddScoped<ExecutionLogQueryService>();
 builder.Services.AddSignalR()
     .AddJsonProtocol(options => {
         options.PayloadSerializerOptions.PropertyNamingPolicy = null;

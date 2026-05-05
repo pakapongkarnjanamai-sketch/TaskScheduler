@@ -1,7 +1,7 @@
 ﻿using DevExtreme.AspNet.Data;
 using DevExtreme.AspNet.Mvc;
 using Microsoft.AspNetCore.Mvc;
-using TaskScheduler.Data;
+using TaskScheduler.API.Services;
 
 namespace TaskScheduler.API.Controllers
 {
@@ -9,25 +9,18 @@ namespace TaskScheduler.API.Controllers
     [ApiController]
     public class TaskExecutionLogsController : ControllerBase
     {
-        private readonly TaskSchedulerDbContext _context;
+        private readonly ExecutionLogQueryService _executionLogQueryService;
 
-        public TaskExecutionLogsController(TaskSchedulerDbContext context)
+        public TaskExecutionLogsController(ExecutionLogQueryService executionLogQueryService)
         {
-            _context = context;
+            _executionLogQueryService = executionLogQueryService;
         }
 
         // GET: api/TaskExecutionLogs/Get
         [HttpGet("Get")]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
-            // ดึงข้อมูล Logs ทั้งหมด
-            // การ Filter ว่าจะเอา Log ของ TaskId ไหน จะถูกจัดการโดยอัตโนมัติ
-            // ผ่าน loadOptions ที่ส่งมาจาก Frontend (ในส่วน filter: ["TaskId", "=", taskId])
-
-            var logsQuery = _context.TaskExecutionLogs
-                                    .OrderByDescending(l => l.StartTime); // เรียงจากล่าสุดไปเก่าสุด
-
-            return DataSourceLoader.Load(logsQuery, loadOptions);
+            return await _executionLogQueryService.GetTaskExecutionLogsAsync(loadOptions, HttpContext.RequestAborted);
         }
     }
 }

@@ -1,10 +1,7 @@
 ﻿using DevExtreme.AspNet.Data;
 using DevExtreme.AspNet.Mvc;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using TaskScheduler.Core.Models;
-using TaskScheduler.Data;
+using TaskScheduler.API.Services;
 
 namespace TaskScheduler.API.Controllers
 {
@@ -12,100 +9,51 @@ namespace TaskScheduler.API.Controllers
     [ApiController]
     public class TasksController : ControllerBase
     {
-        private readonly TaskSchedulerDbContext _context;
+        private readonly TaskAdminService _taskAdminService;
 
-        public TasksController(TaskSchedulerDbContext context)
+        public TasksController(TaskAdminService taskAdminService)
         {
-            _context = context;
+            _taskAdminService = taskAdminService;
         }
 
         // URL: api/Tasks/Get
         [HttpGet("Get")]
         public async Task<object> Get(DataSourceLoadOptions loadOptions)
         {
-            // ใช้ DataSourceLoader เพื่อจัดการ filter/sort/page จาก Grid
-            // ปรับปรุง: ใช้ Select เพื่อรวมข้อมูล Status, LastRun, NextRun เข้าไปในผลลัพธ์
-            var source = _context.Tasks.AsNoTracking()
-                .Select(t => new {
-                    t.Id,
-                    t.Name,
-                    t.Description,
-                    t.IsActive,
-                    t.UpdatedAt,
-
-                    // 1. สถานะล่าสุด: ดึงจาก Log ที่มี StartTime ล่าสุด
-                    LastStatus = _context.TaskExecutionLogs
-                                    .Where(l => l.TaskId == t.Id)
-                                    .OrderByDescending(l => l.StartTime)
-                                    .Select(l => l.Status)
-                                    .FirstOrDefault(),
-
-                    // 2. เวลาทำงานล่าสุด: ดึงจาก Log ตัวเดียวกัน
-                    LastExecutionTime = _context.TaskExecutionLogs
-                                    .Where(l => l.TaskId == t.Id)
-                                    .OrderByDescending(l => l.StartTime)
-                                    .Select(l => l.StartTime)
-                                    .FirstOrDefault(),
-
-                    // 3. เวลาทำงานถัดไป: ดึงเวลาที่น้อยที่สุดจาก Trigger ที่ Active อยู่
-                    NextExecutionTime = t.Triggers
-                                    .Where(tr => tr.IsActive)
-                                    .OrderBy(tr => tr.NextExecutionTime)
-                                    .Select(tr => tr.NextExecutionTime)
-                                    .FirstOrDefault()
-                });
-
-            return DataSourceLoader.Load(source, loadOptions);
+            return await _taskAdminService.GetAsync(loadOptions, HttpContext.RequestAborted);
         }
 
         // URL: api/Tasks/Post
         [HttpPost("Post")]
         public async Task<IActionResult> Post([FromForm] string values)
         {
-            var task = new Core.Models.Task();
-            JsonConvert.PopulateObject(values, task);
+            var result = await _taskAdminService.CreateAsync(values, HttpContext.RequestAborted);
+            if (!result.IsSuccess)
+                return BadRequest(result.ErrorMessage);
 
-            if (!TryValidateModel(task))
-                return BadRequest(ModelState);
-
-            // Set default values if needed
-            // task.CreatedDate = DateTime.UtcNow;
-
-            _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
-
-            return Ok(task);
+            return Ok(result.Value);
         }
 
         // URL: api/Tasks/Put
         [HttpPut("Put")]
         public async Task<IActionResult> Put([FromForm] int key, [FromForm] string values)
         {
-            var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == key);
-            if (task == null)
+            var result = await _taskAdminService.UpdateAsync(key, values, HttpContext.RequestAborted);
+            if (result.IsNotFound)
                 return NotFound();
+            if (!result.IsSuccess)
+                return BadRequest(result.ErrorMessage);
 
-            JsonConvert.PopulateObject(values, task);
-
-            if (!TryValidateModel(task))
-                return BadRequest(ModelState);
-
-            // task.ModifiedDate = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return Ok(task);
+            return Ok(result.Value);
         }
 
         // URL: api/Tasks/Delete
         [HttpDelete("Delete")]
         public async Task<IActionResult> Delete([FromForm] int key)
         {
-            var task = await _context.Tasks.FindAsync(key);
-            if (task == null)
+            var deleted = await _taskAdminService.DeleteAsync(key, HttpContext.RequestAborted);
+            if (!deleted)
                 return NotFound();
-
-            _context.Tasks.Remove(task);
-            await _context.SaveChangesAsync();
 
             return Ok();
         }

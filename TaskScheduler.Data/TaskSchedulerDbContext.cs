@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System;
 using TaskScheduler.Core.Models;
 using TaskScheduler.Data.Services;
@@ -10,22 +9,15 @@ namespace TaskScheduler.Data
     {
 
         private readonly IDateTime _dateTime;
-        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ICurrentUserService _currentUserService;
         public TaskSchedulerDbContext(
             DbContextOptions<TaskSchedulerDbContext> options,
             IDateTime dateTime,
-            IHttpContextAccessor httpContextAccessor,
             ICurrentUserService currentUserService)
             : base(options)
         {
             _dateTime = dateTime;
-            _httpContextAccessor = httpContextAccessor;
             _currentUserService = currentUserService;
-        }
-        public TaskSchedulerDbContext(DbContextOptions<TaskSchedulerDbContext> options)
-            : base(options)
-        {
         }
 
         public DbSet<Core.Models.Task> Tasks { get; set; }
@@ -40,6 +32,7 @@ namespace TaskScheduler.Data
                 entity.ToTable("Tasks");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.HasQueryFilter(e => !e.IsDeleted);
 
 
             });
@@ -48,6 +41,9 @@ namespace TaskScheduler.Data
             {
                 entity.ToTable("Schedules");
                 entity.HasKey(e => e.Id);
+                entity.Property(e => e.TriggerType).IsRequired().HasMaxLength(32);
+                entity.Property(e => e.DaysOfWeek).HasMaxLength(64);
+                entity.HasQueryFilter(e => !e.IsDeleted);
                 entity.HasOne(e => e.Task)
                       .WithMany(e => e.Triggers)
                       .HasForeignKey(e => e.TaskId)
@@ -65,6 +61,7 @@ namespace TaskScheduler.Data
                 entity.ToTable("Steps");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ApiUrl).IsRequired().HasMaxLength(500);
+                entity.HasQueryFilter(e => e.Task != null && !e.Task.IsDeleted);
 
                 entity.HasOne(e => e.Task)
                       .WithMany(e => e.Steps)
@@ -88,18 +85,32 @@ namespace TaskScheduler.Data
         // ✅ แยก Logic ออกมาเป็น Private Method เพื่อลด Code Duplication
         private void SetAuditFields()
         {
+            var now = _dateTime?.Now ?? DateTime.UtcNow;
+            var currentUserId = _currentUserService?.UserId ?? "SYSTEM";
+
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable softDeletable)
+                {
+                    entry.State = EntityState.Modified;
+                    softDeletable.IsDeleted = true;
+                    softDeletable.DeletedAt = now;
+                    softDeletable.DeletedBy = currentUserId;
+                }
+            }
+
             var entries = ChangeTracker.Entries<BaseEntity>();
             foreach (var entry in entries)
             {
                 if (entry.State == EntityState.Added)
                 {
-                    entry.Entity.CreatedAt = _dateTime.Now;
-                    entry.Entity.CreatedBy = _currentUserService.UserId;
+                    entry.Entity.CreatedAt = now;
+                    entry.Entity.CreatedBy = currentUserId;
                 }
                 else if (entry.State == EntityState.Modified)
                 {
-                    entry.Entity.UpdatedAt = _dateTime.Now;
-                    entry.Entity.UpdatedBy = _currentUserService.UserId;
+                    entry.Entity.UpdatedAt = now;
+                    entry.Entity.UpdatedBy = currentUserId;
 
                     // 🛡️ ป้องกันไม่ให้ CreatedAt และ CreatedBy ถูกแก้ไขโดยไม่ตั้งใจตอน Update
                     entry.Property(x => x.CreatedAt).IsModified = false;

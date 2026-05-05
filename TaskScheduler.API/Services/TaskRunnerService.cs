@@ -12,31 +12,57 @@ namespace TaskScheduler.API.Services
         private readonly TaskSchedulerDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<TaskRunnerService> _logger;
+        private readonly ScheduleTimingService _scheduleTimingService;
         private readonly IHubContext<TaskHub> _hubContext; // เพิ่มตัวแปรสำหรับ SignalR
 
         public TaskRunnerService(
             TaskSchedulerDbContext context,
             IHttpClientFactory httpClientFactory,
             ILogger<TaskRunnerService> logger,
+            ScheduleTimingService scheduleTimingService,
             IHubContext<TaskHub> hubContext) // Inject IHubContext เข้ามา
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _scheduleTimingService = scheduleTimingService;
             _hubContext = hubContext;
         }
 
         public async System.Threading.Tasks.Task RunTask(int triggerId)
         {
-            var now = DateTime.UtcNow.AddHours(7);
-            var thaiNowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+            var thaiNowMinute = _scheduleTimingService.GetCurrentBusinessMinute();
 
             var trigger = await _context.Schedules
-                .Include(t => t.Task)
+                .Include(t => t.Task!)
                 .ThenInclude(t => t.Steps)
                 .FirstOrDefaultAsync(t => t.Id == triggerId);
 
-            if (trigger == null || trigger.Task == null) return;
+            if (trigger == null || trigger.Task == null)
+            {
+                return;
+            }
+
+            if (!trigger.IsActive || !trigger.Task.IsActive)
+            {
+                _logger.LogWarning(
+                    "Skipping trigger {TriggerId} because the schedule or task is inactive.",
+                    triggerId);
+                return;
+            }
+
+            var hasRunningExecution = await _context.TaskExecutionLogs.AnyAsync(log =>
+                log.TriggerId == triggerId &&
+                log.Status == "Running" &&
+                log.EndTime == null);
+
+            if (hasRunningExecution)
+            {
+                _logger.LogWarning(
+                    "Skipping trigger {TriggerId} because an execution is already running.",
+                    triggerId);
+                return;
+            }
 
             // 1. สร้าง Log หลัก (Parent) สถานะ "Running"
             var mainExecutionLog = new TaskExecutionLog
@@ -80,7 +106,7 @@ namespace TaskScheduler.API.Services
                         TaskExecutionLogId = mainExecutionLog.Id,
                         StepName = step.Name,
                         Order = step.Order,
-                        StartTime = DateTime.UtcNow.AddHours(7),
+                        StartTime = _scheduleTimingService.GetCurrentBusinessTime(),
                         Status = "Running",
                         ResponseMessage = "Processing..."
                     };
@@ -106,7 +132,7 @@ namespace TaskScheduler.API.Services
 
                         var contentLog = content.Length > 1000 ? content.Substring(0, 1000) + "..." : content;
 
-                        stepLog.EndTime = DateTime.UtcNow.AddHours(7);
+                        stepLog.EndTime = _scheduleTimingService.GetCurrentBusinessTime();
                         stepLog.Status = response.IsSuccessStatusCode ? "Success" : "Failed";
                         stepLog.ResponseMessage = $"Status: {response.StatusCode}\nResponse: {contentLog}";
 
@@ -126,7 +152,7 @@ namespace TaskScheduler.API.Services
                     catch (Exception stepEx)
                     {
                         allStepsSuccess = false;
-                        stepLog.EndTime = DateTime.UtcNow.AddHours(7);
+                        stepLog.EndTime = _scheduleTimingService.GetCurrentBusinessTime();
                         stepLog.Status = "Error";
                         stepLog.ResponseMessage = $"Exception: {stepEx.Message}";
                         await _context.SaveChangesAsync();
@@ -137,16 +163,16 @@ namespace TaskScheduler.API.Services
                 }
 
                 // 3. อัปเดตสถานะจบงานที่ Log แม่
-                var endNow = DateTime.UtcNow.AddHours(7);
-                mainExecutionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
+                var endNow = _scheduleTimingService.GetCurrentBusinessMinute();
+                mainExecutionLog.EndTime = endNow;
                 mainExecutionLog.Status = allStepsSuccess ? "Success" : "Failed";
                 mainExecutionLog.ResponseMessage = summaryBuilder.ToString();
 
             }
             catch (Exception ex)
             {
-                var endNow = DateTime.UtcNow.AddHours(7);
-                mainExecutionLog.EndTime = new DateTime(endNow.Year, endNow.Month, endNow.Day, endNow.Hour, endNow.Minute, 0);
+                var endNow = _scheduleTimingService.GetCurrentBusinessMinute();
+                mainExecutionLog.EndTime = endNow;
                 mainExecutionLog.Status = "Error";
                 mainExecutionLog.ResponseMessage = $"Critical System Error: {ex.Message}";
                 _logger.LogError(ex, $"Error running task {trigger.Task.Name}");
@@ -154,7 +180,7 @@ namespace TaskScheduler.API.Services
 
             // คำนวณรอบถัดไป
             trigger.LastExecutionTime = thaiNowMinute;
-            CalculateNextRun(trigger, thaiNowMinute);
+            _scheduleTimingService.CalculateNextRun(trigger, thaiNowMinute);
 
             await _context.SaveChangesAsync();
 
@@ -165,28 +191,6 @@ namespace TaskScheduler.API.Services
                 LastExecutionTime = thaiNowMinute,
                 NextExecutionTime = trigger.NextExecutionTime
             });
-        }
-
-        private void CalculateNextRun(Schedule trigger, DateTime baseTime)
-        {
-            if (trigger.TriggerType == "Interval" && trigger.IntervalTime > 0)
-            {
-                trigger.NextExecutionTime = baseTime.AddMinutes(trigger.IntervalTime.Value);
-            }
-            else if (trigger.TriggerType == "Daily" && trigger.StartTime.HasValue)
-            {
-                var start = trigger.StartTime.Value;
-                var startClean = new TimeSpan(start.Hours, start.Minutes, 0);
-                var todayRun = baseTime.Date.Add(startClean);
-                if (todayRun <= baseTime)
-                {
-                    trigger.NextExecutionTime = todayRun.AddDays(1);
-                }
-                else
-                {
-                    trigger.NextExecutionTime = todayRun;
-                }
-            }
         }
     }
 }

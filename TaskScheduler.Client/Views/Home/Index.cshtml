@@ -13,6 +13,118 @@
         $(function () {
              var serviceUrl = "https://localhost:7253/api/";
             // var serviceUrl = "https://ap-ntc2138-qawb/TaskScheduler/Service/api/";
+            var hubUrl = new URL("../taskHub", serviceUrl).toString();
+            var scheduleTriggerTypes = ["Interval", "Daily", "Weekly", "Monthly"];
+            var weekDayOptions = [
+                { value: "Monday", text: "Mon" },
+                { value: "Tuesday", text: "Tue" },
+                { value: "Wednesday", text: "Wed" },
+                { value: "Thursday", text: "Thu" },
+                { value: "Friday", text: "Fri" },
+                { value: "Saturday", text: "Sat" },
+                { value: "Sunday", text: "Sun" }
+            ];
+
+            function formatScheduleTime(value) {
+                if (!value) return "";
+
+                if (value instanceof Date) {
+                    return DevExpress.localization.formatDate(value, "HH:mm");
+                }
+
+                var text = String(value);
+                var timeMatch = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+                if (timeMatch) {
+                    return timeMatch[1].padStart(2, "0") + ":" + timeMatch[2];
+                }
+
+                return text.length >= 5 ? text.substring(0, 5) : text;
+            }
+
+            function parseDaysOfWeek(value) {
+                if (!value) return [];
+
+                if (Array.isArray(value)) {
+                    return value.filter(Boolean);
+                }
+
+                return String(value)
+                    .split(",")
+                    .map(function(day) { return day.trim(); })
+                    .filter(Boolean);
+            }
+
+            function formatDaysOfWeek(value) {
+                var days = parseDaysOfWeek(value);
+                if (!days.length) return "";
+
+                return days.map(function(day) {
+                    var option = weekDayOptions.find(function(item) { return item.value === day; });
+                    return option ? option.text : day;
+                }).join(", ");
+            }
+
+            function isTimeBasedTrigger(triggerType) {
+                return triggerType === "Daily" || triggerType === "Weekly" || triggerType === "Monthly";
+            }
+
+            function applyTriggerDefaults(target, triggerType) {
+                target.TriggerType = triggerType;
+
+                if (triggerType === "Interval") {
+                    target.IntervalTime = target.IntervalTime || 15;
+                    target.StartTime = null;
+                    target.DaysOfWeek = null;
+                    target.DayOfMonth = null;
+                    return;
+                }
+
+                target.IntervalTime = null;
+
+                if (triggerType === "Daily") {
+                    target.DaysOfWeek = null;
+                    target.DayOfMonth = null;
+                    return;
+                }
+
+                if (triggerType === "Weekly") {
+                    var selectedDays = parseDaysOfWeek(target.DaysOfWeek);
+                    target.DaysOfWeek = selectedDays.length ? selectedDays : ["Monday"];
+                    target.DayOfMonth = null;
+                    return;
+                }
+
+                if (triggerType === "Monthly") {
+                    target.DaysOfWeek = null;
+                    target.DayOfMonth = target.DayOfMonth || 1;
+                }
+            }
+
+            function buildScheduleSummary(schedule) {
+                if (!schedule) return "";
+
+                if (schedule.TriggerType === "Interval") {
+                    return schedule.IntervalTime
+                        ? "Every " + schedule.IntervalTime + " minutes"
+                        : "Recurring interval";
+                }
+
+                if (schedule.TriggerType === "Daily") {
+                    return "Every day at " + (formatScheduleTime(schedule.StartTime) || "--:--");
+                }
+
+                if (schedule.TriggerType === "Weekly") {
+                    var days = formatDaysOfWeek(schedule.DaysOfWeek) || "Select weekdays";
+                    return days + " at " + (formatScheduleTime(schedule.StartTime) || "--:--");
+                }
+
+                if (schedule.TriggerType === "Monthly") {
+                    var dayText = schedule.DayOfMonth ? "Day " + schedule.DayOfMonth : "Select day";
+                    return dayText + " at " + (formatScheduleTime(schedule.StartTime) || "--:--");
+                }
+
+                return "";
+            }
 
             // ============ STORES ============
             var tasksStore = DevExpress.data.AspNet.createStore({
@@ -65,8 +177,7 @@
             });
 
             var connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://ap-ntc2138-qawb/TaskScheduler/Service/taskHub") 
-                // .withUrl("https://localhost:7253/taskHub") 
+                .withUrl(hubUrl)
                 .withAutomaticReconnect()
                 .build();
 
@@ -267,7 +378,7 @@
                 // --- เพิ่มปุ่ม Step Logs ตรงนี้ ---
                 {
                     hint: "Step Logs",
-                    icon: "menu", // หรือใช้ icon 'list' ก็ได้
+                    icon: "detailslayout",
                     onClick: function(e) {
                         showStepLogs(e.row.data.Id, e.row.data.Name);
                     }
@@ -407,6 +518,34 @@
 
             // ============ TRIGGERS GRID ============
             function createTriggersGrid(container, taskId) {
+                var scheduleEditForm = null;
+                var scheduleEditorState = {
+                    triggerType: "Interval"
+                };
+
+                function applyScheduleFormLayout(triggerType) {
+                    scheduleEditorState.triggerType = triggerType || "Interval";
+
+                    if (!scheduleEditForm) {
+                        return;
+                    }
+
+                    var formData = scheduleEditForm.option("formData") || {};
+
+                    if (scheduleEditorState.triggerType === "Interval" && !formData.IntervalTime) {
+                        scheduleEditForm.updateData("IntervalTime", 15);
+                    }
+
+                    if (scheduleEditorState.triggerType === "Monthly" && !formData.DayOfMonth) {
+                        scheduleEditForm.updateData("DayOfMonth", 1);
+                    }
+
+                    scheduleEditForm.itemOption("timingGroup.intervalTimeField", "visible", scheduleEditorState.triggerType === "Interval");
+                    scheduleEditForm.itemOption("timingGroup.startTimeField", "visible", isTimeBasedTrigger(scheduleEditorState.triggerType));
+                    scheduleEditForm.itemOption("timingGroup.weekdaysField", "visible", scheduleEditorState.triggerType === "Weekly");
+                    scheduleEditForm.itemOption("timingGroup.dayOfMonthField", "visible", scheduleEditorState.triggerType === "Monthly");
+                }
+
                 $("<div>").dxDataGrid({
                     dataSource: {
                         store: triggersStore,
@@ -414,113 +553,321 @@
                     },
                     remoteOperations: false,
                     showBorders: true,
+                    rowAlternationEnabled: true,
+                    hoverStateEnabled: true,
                     columnAutoWidth: true,
+                    wordWrapEnabled: true,
+                    noDataText: "No schedules configured yet.",
                     width: "100%",
                     height: "100%",
                     scrolling: { mode: "virtual" },
                     editing: {
-                        mode: "row",
+                        mode: "popup",
                         allowAdding: true,
                         allowUpdating: true,
                         allowDeleting: true,
-                        useIcons: true
+                        useIcons: true,
+                        popup: {
+                            title: "Schedule Rule",
+                            showTitle: true,
+                            width: 760,
+                            maxHeight: 720,
+                            height: "auto"
+                        },
+                        form: {
+                            colCount: 2,
+                            labelLocation: "top",
+                            onInitialized: function(args) {
+                                scheduleEditForm = args.component;
+                                applyScheduleFormLayout(scheduleEditorState.triggerType);
+                            },
+                            onContentReady: function(args) {
+                                scheduleEditForm = args.component;
+                                applyScheduleFormLayout(scheduleEditorState.triggerType);
+                            },
+                            items: [
+                                {
+                                    itemType: "group",
+                                    name: "generalGroup",
+                                    caption: "General",
+                                    colSpan: 2,
+                                    colCount: 2,
+                                    items: [
+                                        {
+                                            dataField: "Name",
+                                            colSpan: 2,
+                                            editorOptions: {
+                                                placeholder: "e.g. Morning dispatch"
+                                            }
+                                        },
+                                        {
+                                            dataField: "Description",
+                                            colSpan: 2,
+                                            editorType: "dxTextArea",
+                                            editorOptions: {
+                                                height: 90,
+                                                placeholder: "Optional note for operators"
+                                            }
+                                        },
+                                        {
+                                            dataField: "TriggerType"
+                                        },
+                                        {
+                                            dataField: "IsActive",
+                                            label: {
+                                                text: "Enabled"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    itemType: "group",
+                                    name: "timingGroup",
+                                    caption: "Timing",
+                                    colSpan: 2,
+                                    colCount: 2,
+                                    items: [
+                                        {
+                                            name: "intervalTimeField",
+                                            dataField: "IntervalTime",
+                                            label: {
+                                                text: "Every (minutes)"
+                                            },
+                                            editorType: "dxNumberBox",
+                                            editorOptions: {
+                                                min: 1,
+                                                showSpinButtons: true,
+                                                step: 1
+                                            }
+                                        },
+                                        {
+                                            name: "startTimeField",
+                                            dataField: "StartTime",
+                                            label: {
+                                                text: "Run At"
+                                            },
+                                            editorType: "dxDateBox",
+                                            editorOptions: {
+                                                type: "time",
+                                                dateSerializationFormat: "HH:mm:ss",
+                                                displayFormat: "HH:mm",
+                                                pickerType: "native",
+                                                interval: 30,
+                                                useMaskBehavior: true,
+                                                invalidDateMessage: "The time must have the following format: HH:mm"
+                                            }
+                                        },
+                                        {
+                                            name: "weekdaysField",
+                                            dataField: "DaysOfWeek",
+                                            colSpan: 2,
+                                            label: {
+                                                text: "Weekdays"
+                                            },
+                                            editorType: "dxTagBox",
+                                            editorOptions: {
+                                                dataSource: weekDayOptions,
+                                                valueExpr: "value",
+                                                displayExpr: "text",
+                                                showSelectionControls: true,
+                                                applyValueMode: "useButtons",
+                                                maxDisplayedTags: 4,
+                                                multiline: false
+                                            }
+                                        },
+                                        {
+                                            name: "dayOfMonthField",
+                                            dataField: "DayOfMonth",
+                                            label: {
+                                                text: "Day Of Month"
+                                            },
+                                            editorType: "dxNumberBox",
+                                            editorOptions: {
+                                                min: 1,
+                                                max: 31,
+                                                showSpinButtons: true,
+                                                step: 1
+                                            }
+                                        },
+                                        {
+                                            dataField: "NextExecutionTime",
+                                            label: {
+                                                text: "Next Run Preview"
+                                            },
+                                            editorType: "dxDateBox",
+                                            editorOptions: {
+                                                displayFormat: "dd/MM/yyyy HH:mm",
+                                                readOnly: true,
+                                                disabled: true
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+
+                    onEditorPreparing: function(e) {
+                        var rowData = e.row && e.row.data ? e.row.data : {};
+                        var triggerType = rowData.TriggerType || scheduleEditorState.triggerType;
+
+                        if (e.dataField === "TriggerType") {
+                            var defaultHandler = e.editorOptions.onValueChanged;
+                            e.editorOptions.onValueChanged = function(args) {
+                                applyTriggerDefaults(rowData, args.value);
+                                e.setValue(args.value);
+
+                                if (scheduleEditForm) {
+                                    scheduleEditForm.updateData("IntervalTime", rowData.IntervalTime);
+                                    scheduleEditForm.updateData("StartTime", rowData.StartTime);
+                                    scheduleEditForm.updateData("DaysOfWeek", parseDaysOfWeek(rowData.DaysOfWeek));
+                                    scheduleEditForm.updateData("DayOfMonth", rowData.DayOfMonth);
+                                }
+
+                                applyScheduleFormLayout(args.value);
+
+                                if (defaultHandler) {
+                                    defaultHandler(args);
+                                }
+                            };
+                        }
+
+                        if (e.dataField === "IntervalTime") {
+                            e.editorOptions = e.editorOptions || {};
+                            e.editorOptions.disabled = triggerType !== "Interval";
+                            if (triggerType !== "Interval") {
+                                e.editorOptions.value = null;
+                            }
+                        }
+
+                        if (e.dataField === "StartTime") {
+                            e.editorOptions = e.editorOptions || {};
+                            e.editorOptions.disabled = !isTimeBasedTrigger(triggerType);
+                            if (!isTimeBasedTrigger(triggerType)) {
+                                e.editorOptions.value = null;
+                            }
+                        }
+
+                        if (e.dataField === "DaysOfWeek") {
+                            e.editorOptions = e.editorOptions || {};
+                            e.editorOptions.value = parseDaysOfWeek(rowData.DaysOfWeek);
+                            e.editorOptions.disabled = triggerType !== "Weekly";
+                            e.editorOptions.onValueChanged = function(args) {
+                                e.setValue(args.value);
+                            };
+                        }
+
+                        if (e.dataField === "DayOfMonth") {
+                            e.editorOptions = e.editorOptions || {};
+                            e.editorOptions.disabled = triggerType !== "Monthly";
+                            if (triggerType !== "Monthly") {
+                                e.editorOptions.value = null;
+                            }
+                        }
+                    },
+
+                    onRowValidating: function(e) {
+                        var nextData = $.extend({}, e.oldData, e.newData);
+
+                        if (nextData.TriggerType === "Interval" && (!nextData.IntervalTime || nextData.IntervalTime <= 0)) {
+                            e.isValid = false;
+                            e.errorText = "Interval schedules require an interval time greater than zero.";
+                        }
+
+                        if (nextData.TriggerType === "Daily" && !nextData.StartTime) {
+                            e.isValid = false;
+                            e.errorText = "Daily schedules require a start time.";
+                        }
+
+                        if (nextData.TriggerType === "Weekly") {
+                            if (!nextData.StartTime) {
+                                e.isValid = false;
+                                e.errorText = "Weekly schedules require a start time.";
+                            }
+
+                            if (!parseDaysOfWeek(nextData.DaysOfWeek).length) {
+                                e.isValid = false;
+                                e.errorText = "Weekly schedules require at least one weekday.";
+                            }
+                        }
+
+                        if (nextData.TriggerType === "Monthly") {
+                            if (!nextData.StartTime) {
+                                e.isValid = false;
+                                e.errorText = "Monthly schedules require a start time.";
+                            }
+
+                            if (!nextData.DayOfMonth || nextData.DayOfMonth < 1 || nextData.DayOfMonth > 31) {
+                                e.isValid = false;
+                                e.errorText = "Monthly schedules require a day of month between 1 and 31.";
+                            }
+                        }
+                    },
+
+                    onEditingStart: function(e) {
+                        scheduleEditorState.triggerType = e.data.TriggerType || "Interval";
+                        e.component.option("editing.popup.title", "Edit Schedule");
                     },
 
                     columns: [
                          {
                             dataField: "Name",
-                            caption: "Schedules Name",
+                            caption: "Schedule",
+                            minWidth: 180,
                             validationRules: [{ type: "required" }]
                         },
                          {
                             dataField: "Description",
                             caption: "Description",
+                            minWidth: 180,
+                            hidingPriority: 1
                         },
                         {
                             dataField: "IsActive",
-                            caption: "Active",
+                            caption: "Enabled",
                             dataType: "boolean",
-                            width: 80
+                            width: 90
                         },
                         {
                             dataField: "TriggerType",
-                            caption: "Type",
+                            caption: "Pattern",
                             width: 120,
                             lookup: {
-                                dataSource: ["Interval", "Daily", "Weekly", "Monthly"]
+                                dataSource: scheduleTriggerTypes
                             },
-                            validationRules: [{ type: "required" }]
+                            validationRules: [{ type: "required" }],
+                            setCellValue: function(newData, value) {
+                                applyTriggerDefaults(newData, value);
+                            }
                         },
-                                      {
-            dataField: "IntervalTime",
-            caption: "Interval",
-            dataType: "number",
-            width: 140, // ปรับความกว้างเพิ่มเล็กน้อยให้พอดีข้อความภาษาอังกฤษ
-            alignment: "center",
-
-            // ใช้ cellTemplate เพื่อตรวจสอบ TriggerType และใส่หน่วยภาษาอังกฤษให้ถูกต้อง
-            cellTemplate: function(container, options) {
-                var value = options.value;
-
-                // ถ้าไม่มีค่า ให้แสดงขีด "-"
-                if (value === null || value === undefined) {
-                    $("<span>").text("-").appendTo(container);
-                    return;
-                }
-
-                // ดึงค่า TriggerType ของแถวนั้นๆ มาตรวจสอบ
-                var type = options.data.TriggerType;
-                var unit = "";
-
-                // กำหนดหน่วยภาษาอังกฤษตามประเภท
-                if (type === "Interval") {
-                    unit = " Minutes";
-                } else if (type === "Daily") {
-                    unit = " Days";
-                } else if (type === "Weekly") {
-                    unit = " Weeks";
-                } else if (type === "Monthly") {
-                    unit = " Months";
-                }
-
-                // แสดงผล ตัวเลข + หน่วย (เช่น "30 Minutes", "1 Days")
-                $("<span>")
-                    .text(value + unit)
-                    .appendTo(container);
-            },
-
-            // ส่วนของการแก้ไขข้อมูล (Editor)
-            editorOptions: {
-                min: 1,                 // ห้ามต่ำกว่า 1
-                showSpinButtons: true,  // มีปุ่มลูกศรขึ้นลง
-                step: 1
-            }
-        },
-
-                               {
-            dataField: "StartTime",
-            caption: "Start Time",
-            width: 120,
-            alignment: "center", // จัดกึ่งกลางเพื่อความสวยงาม
-            editorType: "dxDateBox",
-
-            // 1. จัดรูปแบบการแสดงผลในตาราง (Grid) ให้เป็น HH:mm
-            customizeText: function(cellInfo) {
-                if (!cellInfo.value) return "";
-                // ค่า TimeSpan มักจะมาเป็น string "HH:mm:ss" เราตัดเอาแค่ 5 ตัวแรก
-                return cellInfo.value.substring(0, 5);
-            },
-
-            // 2. ปรับปรุงตัวเลือกเวลา (Editor)
-            editorOptions: {
-                type: "time",
-                displayFormat: "HH:mm",     
-                pickerType: "native",      
-                interval: 30,              
-                useMaskBehavior: true,    
-                invalidDateMessage: "The time must have the following format: HH:mm"
-            }
-        },
+                        {
+                            caption: "Recurrence",
+                            minWidth: 230,
+                            allowEditing: false,
+                            calculateCellValue: function(data) {
+                                return buildScheduleSummary(data);
+                            }
+                        },
+                        {
+                            dataField: "IntervalTime",
+                            visible: false,
+                            showInColumnChooser: false
+                        },
+                        {
+                            dataField: "StartTime",
+                            visible: false,
+                            showInColumnChooser: false
+                        },
+                        {
+                            dataField: "DaysOfWeek",
+                            visible: false,
+                            showInColumnChooser: false
+                        },
+                        {
+                            dataField: "DayOfMonth",
+                            visible: false,
+                            showInColumnChooser: false
+                        },
                         {
                             dataField: "NextExecutionTime",
                             caption: "Next Run",
@@ -529,13 +876,66 @@
                             allowEditing: false,
                             width: 150
                         },
+                        {
+                            type: "buttons",
+                            width: 110,
+                            buttons: [
+                                {
+                                    name: "edit",
+                                    hint: "Open schedule editor"
+                                },
+                                {
+                                    name: "delete",
+                                    hint: "Delete schedule"
+                                }
+                            ]
+                        }
                         
                     ],
+
+                    onToolbarPreparing: function(e) {
+                        e.toolbarOptions.items = e.toolbarOptions.items.filter(function(item) {
+                            return item.name !== "addRowButton";
+                        });
+
+                        e.toolbarOptions.items.unshift({
+                            location: "after",
+                            widget: "dxButton",
+                            options: {
+                                icon: "event",
+                                text: "Add Schedule",
+                                type: "default",
+                                stylingMode: "contained",
+                                onClick: function() {
+                                    e.component.addRow();
+                                }
+                            }
+                        });
+
+                        e.toolbarOptions.items.unshift({
+                            location: "after",
+                            widget: "dxButton",
+                            options: {
+                                icon: "refresh",
+                                hint: "Refresh schedules",
+                                onClick: function() {
+                                    e.component.refresh();
+                                }
+                            }
+                        });
+                    },
 
                     onInitNewRow: function(e) {
                         e.data.TaskId = taskId;
                         e.data.TriggerType = "Interval";
+                        e.data.IntervalTime = 15;
+                        e.data.StartTime = null;
+                        e.data.DaysOfWeek = null;
+                        e.data.DayOfMonth = null;
                         e.data.IsActive = true;
+
+                        scheduleEditorState.triggerType = e.data.TriggerType;
+                        e.component.option("editing.popup.title", "Add Schedule");
                     }
                 }).appendTo(container);
             }

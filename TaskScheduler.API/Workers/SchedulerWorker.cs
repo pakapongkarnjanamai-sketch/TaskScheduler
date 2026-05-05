@@ -27,24 +27,8 @@ namespace TaskScheduler.API.Workers
                 {
                     using (var scope = _serviceProvider.CreateScope())
                     {
-                        var context = scope.ServiceProvider.GetRequiredService<TaskSchedulerDbContext>();
-                        var taskRunner = scope.ServiceProvider.GetRequiredService<TaskRunnerService>();
-
-                        // ✅ 2. ค้นหา Trigger ที่ถึงเวลาทำงานแล้ว (NextExecutionTime <= thaiNow)
-                        var dueTriggers = context.Schedules
-                            .Where(t => t.IsActive && t.NextExecutionTime <= thaiNow)
-                            .ToList(); // ดึงมาเป็น List ก่อนเพื่อหลีกเลี่ยง Concurrency ปัญหาของ EF
-
-                        if (dueTriggers.Any())
-                        {
-                            _logger.LogInformation($"[{thaiNow:HH:mm:ss}] Found {dueTriggers.Count} tasks to run.");
-
-                            foreach (var trigger in dueTriggers)
-                            {
-                                // รันงานและคำนวณรอบถัดไป
-                                await taskRunner.RunTask(trigger.Id);
-                            }
-                        }
+                        var scheduleDispatchService = scope.ServiceProvider.GetRequiredService<ScheduledTaskDispatchService>();
+                        await scheduleDispatchService.RunDueSchedulesAsync(stoppingToken);
                     }
                 }
                 catch (Exception ex)
