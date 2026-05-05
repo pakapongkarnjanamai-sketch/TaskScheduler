@@ -24,6 +24,7 @@ This repository currently follows a pragmatic layered structure and should evolv
 | **TaskScheduler.Data** | Persistence and infrastructure layer. Owns EF Core, SQL Server access, repositories, and infrastructure services. May depend on Core, but should not contain UI logic. |
 | **TaskScheduler.API** | HTTP API, SignalR hubs, background workers, and orchestration entry points. Controllers and hubs must stay thin and delegate work to services. Do not place business rules directly in controllers. |
 | **TaskScheduler.Client** | ASP.NET Core MVC presentation layer using DevExtreme. Handles view composition, view models, and UI interactions only. Do not place persistence logic or domain rules in views/controllers. |
+| **TaskScheduler.React** | Vite + React + TypeScript presentation layer using DevExtreme where useful for data-heavy operations. It should mirror TaskScheduler.Client capabilities while keeping React code feature-oriented, clean, and free of backend/domain rules. |
 | **TaskScheduler.Tests** | xUnit test project for unit tests, especially domain rules, orchestration behavior, and regression coverage. |
 
 Dependency rules:
@@ -31,7 +32,7 @@ Dependency rules:
 1. **Core stays clean:** Do not reference EF Core, SQL Server, MVC, SignalR, or DevExtreme from Core.
 2. **Data is infrastructure:** Treat TaskScheduler.Data as the infrastructure/data access layer.
 3. **API stays thin:** Controllers, hubs, and hosted services should coordinate work, not own business rules.
-4. **Client stays presentational:** Razor views and MVC controllers must not contain business logic beyond view composition and request flow.
+4. **Client layers stay presentational:** Razor/MVC controllers and React components must not contain persistence logic or domain rules beyond view composition, local UI state, and request flow.
 5. **No fake layers:** Do not invent an Application layer or extra projects unless the user explicitly asks for that refactor.
 6. **Move toward Clean Architecture pragmatically:** If logic is complex, extract services or domain-oriented components rather than expanding controllers or views.
 
@@ -74,6 +75,17 @@ Dependency rules:
 * If a view-level DevExtreme workflow grows complex, move the interaction logic into a dedicated file under `TaskScheduler.Client/wwwroot/js` instead of leaving large editor/state blocks inline in a Razor view.
 * Continue avoiding inline styles and unnecessary CSS churn.
 
+#### TaskScheduler.React
+
+* Use Vite, React, TypeScript, and DevExtreme React components as the default stack for this frontend.
+* Keep the React app feature-oriented under `src/features`, with shared API/config/types/components separated under `src/api`, `src/config`, `src/types`, and `src/components`.
+* Prefer DevExtreme for dense operational grids, filtering, sorting, master-detail views, remote operations, and popup editing where it stays predictable.
+* Use small custom React components for workflows that are clearer outside DevExtreme's generated form state, especially recurrence-specific schedule editing.
+* Preserve existing admin API compatibility: DevExtreme resources currently use PascalCase entities and form `values` payloads for insert/update.
+* Do not move scheduling, execution, audit, authorization, or persistence decisions into React. The React app may perform UI validation, but backend services remain authoritative.
+* Avoid animations, decorative UI effects, heavy custom state frameworks, and broad CSS churn. Keep layouts operational, readable, and stable.
+* Keep API base URLs and SignalR hub URLs in environment/config helpers rather than hardcoding hosts in components.
+
 #### TaskScheduler.Tests
 
 * Put tests in TaskScheduler.Tests.
@@ -87,11 +99,11 @@ Do not introduce new technologies, libraries, or patterns without a concrete nee
 
 * **Runtime / Language:** .NET 9 / C#
 * **Backend:** ASP.NET Core Web API
-* **Frontend:** ASP.NET Core MVC / Razor
+* **Frontend:** ASP.NET Core MVC / Razor, plus Vite + React + TypeScript in TaskScheduler.React
 * **Database & ORM:** SQL Server + EF Core
 * **Real-time:** SignalR
 * **API Documentation:** Swagger / OpenAPI
-* **UI Library:** DevExtreme
+* **UI Library:** DevExtreme and DevExtreme React
 * **Authentication:** Windows Authentication
 * **Testing:** xUnit in TaskScheduler.Tests
 
@@ -103,6 +115,7 @@ Implementation notes:
 * The development database is `TaskScheduler_Development`, and the API development connection string lives in `TaskScheduler.API/appsettings.Development.json`.
 * Repo-local `dotnet-ef` is pinned in `.config/dotnet-tools.json` to `9.0.11`; use it from the repository root to avoid tool/runtime version drift.
 * Local builds/tests that rebuild TaskScheduler.API or TaskScheduler.Client can fail while those apps are running because the output executable is locked.
+* TaskScheduler.React defaults to direct development API URLs (`https://localhost:7253/api/` and `https://localhost:7253/taskHub`) because Windows/Negotiate authentication does not work reliably through the Vite proxy. The Vite proxy routes remain available only when environment config intentionally points to `/api` and `/taskHub`.
 
 ### Current Implementation Snapshot
 
@@ -110,6 +123,7 @@ Implementation notes:
 * Scheduler recurrence currently supports `Interval`, `Daily`, `Weekly`, and `Monthly`.
 * Schedule timing is treated as Thailand business time (`UTC+7`), and timezone-aware schedule payloads are normalized before extracting `TimeOfDay`.
 * The main scheduler admin UX uses popup/form editing surfaced from `TaskScheduler.Client/Views/Home/Index.cshtml`, while the schedule grid/editor behavior lives in `TaskScheduler.Client/wwwroot/js/schedule-grid-editor.js` and shared recurrence helpers live in `TaskScheduler.Client/wwwroot/js/scheduler-editor.js`.
+* TaskScheduler.React is a parallel React admin frontend. It uses DevExtreme React for task, step, schedule, and log grids; a custom React schedule editor for recurrence-specific fields; and SignalR updates through `@microsoft/signalr`.
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
 * The weekly `DaysOfWeek` editor in the popup must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
 
@@ -204,10 +218,12 @@ When generating or editing client-side UI:
 * **CSS policy:** Minimize custom CSS and avoid inline styles.
 * **Layout preference:** Favor clear operational layouts, dense data presentation where helpful, and forms/grids optimized for internal staff workflows.
 * **Consistency:** Reuse existing MVC/Razor and DevExtreme patterns already present in the project.
+* **React consistency:** In TaskScheduler.React, reuse the feature folder structure and shared helpers before creating one-off component patterns.
 * **Accessibility:** Maintain semantic HTML, keyboard-friendly interactions, and reasonable accessibility baselines.
 * **Separation of concerns:** UI handles rendering and interaction only. Business rules, validation rules, and persistence decisions belong outside the view layer.
 * **Current scheduler UX:** The schedules surface now uses a summary grid plus popup/form editing; show recurrence-specific fields only when they apply to the selected trigger type.
 * **Scheduler client structure:** Keep generic recurrence helpers in `scheduler-editor.js` and keep the schedules grid/popup wiring in `schedule-grid-editor.js` rather than rebuilding that logic inline in Razor.
+* **React scheduler structure:** Keep React recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`, grid wiring in `SchedulesGrid.tsx`, and schedule form behavior in `ScheduleEditorDialog.tsx`.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
 
 ## 9. Coding Standards & Implementation Conventions
@@ -220,6 +236,7 @@ When generating or editing client-side UI:
 * **Long-running work:** Thread through cancellation tokens for I/O-bound or background operations when appropriate.
 * **Controller discipline:** Keep controllers focused on request handling, validation flow, and service delegation.
 * **Comment discipline:** Add comments only when they explain intent that is not obvious from the code itself.
+* **React/TypeScript:** Prefer typed helpers and feature-level components over large inline render blocks. Keep API contracts centralized in `src/types` and avoid `any` unless a third-party boundary forces it and the value is immediately narrowed.
 
 ## 10. Testing & Definition of Done
 
@@ -230,6 +247,7 @@ Testing expectations:
 * If changing task execution behavior, schedule activation logic, or logging rules, add or update tests for those changes.
 * If changing EF Core mappings, soft delete behavior, or audit persistence, add focused integration coverage where unit tests are not sufficient.
 * If changing API contracts, verify casing and response/error shape consistency.
+* If changing TaskScheduler.React, run `npm run lint` and `npm run build` from `TaskScheduler.React`.
 * Baseline coverage already includes scheduler admin validation and schedule timing calculations for `Interval`, `Daily`, `Weekly`, and `Monthly` recurrence.
 
 Before finalizing work, silently review this checklist:

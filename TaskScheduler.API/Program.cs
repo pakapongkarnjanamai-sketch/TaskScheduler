@@ -41,7 +41,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("https://localhost:7259") 
+        policy.WithOrigins(
+            "https://localhost:7259",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -62,6 +65,6 @@ app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers().RequireAuthorization();
-app.MapHub<TaskHub>("/taskHub").RequireAuthorization();
+app.MapControllers().RequireCors("AllowAll").RequireAuthorization();
+app.MapHub<TaskHub>("/taskHub").RequireCors("AllowAll").RequireAuthorization();
 app.Run();
