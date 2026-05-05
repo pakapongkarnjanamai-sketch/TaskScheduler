@@ -71,6 +71,7 @@ Dependency rules:
 * Keep the Client layer focused on presentation, view models, and UI flow. Do not move business rules or persistence logic into MVC controllers or views.
 * Custom JavaScript or CSS is allowed only when DevExtreme or existing MVC patterns cannot deliver the required UX clearly enough.
 * When custom UI code is necessary, keep it small, reusable, and consistent with the operational style of the system.
+* If a view-level DevExtreme workflow grows complex, move the interaction logic into a dedicated file under `TaskScheduler.Client/wwwroot/js` instead of leaving large editor/state blocks inline in a Razor view.
 * Continue avoiding inline styles and unnecessary CSS churn.
 
 #### TaskScheduler.Tests
@@ -108,7 +109,7 @@ Implementation notes:
 * Task and Schedule execution gating currently uses `BaseEntity.IsActive`; a richer lifecycle model such as `Draft -> Active -> Paused -> Archived` is not implemented yet.
 * Scheduler recurrence currently supports `Interval`, `Daily`, `Weekly`, and `Monthly`.
 * Schedule timing is treated as Thailand business time (`UTC+7`), and timezone-aware schedule payloads are normalized before extracting `TimeOfDay`.
-* The main scheduler admin UX now uses popup/form editing in `TaskScheduler.Client/Views/Home/Index.cshtml` rather than inline row editing.
+* The main scheduler admin UX uses popup/form editing surfaced from `TaskScheduler.Client/Views/Home/Index.cshtml`, while the schedule grid/editor behavior lives in `TaskScheduler.Client/wwwroot/js/schedule-grid-editor.js` and shared recurrence helpers live in `TaskScheduler.Client/wwwroot/js/scheduler-editor.js`.
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
 * The weekly `DaysOfWeek` editor in the popup must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
 
@@ -206,6 +207,7 @@ When generating or editing client-side UI:
 * **Accessibility:** Maintain semantic HTML, keyboard-friendly interactions, and reasonable accessibility baselines.
 * **Separation of concerns:** UI handles rendering and interaction only. Business rules, validation rules, and persistence decisions belong outside the view layer.
 * **Current scheduler UX:** The schedules surface now uses a summary grid plus popup/form editing; show recurrence-specific fields only when they apply to the selected trigger type.
+* **Scheduler client structure:** Keep generic recurrence helpers in `scheduler-editor.js` and keep the schedules grid/popup wiring in `schedule-grid-editor.js` rather than rebuilding that logic inline in Razor.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
 
 ## 9. Coding Standards & Implementation Conventions

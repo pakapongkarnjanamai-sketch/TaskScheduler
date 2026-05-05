@@ -9,23 +9,73 @@
     <div id="gridTasks"></div>
     <div id="popupHistory"></div>
     <div id="popupStepLogs"></div>
+    <div id="popupStepRequestTest"></div>
 </div>
+
+@section Styles {
+    <style>
+        .step-test-popup {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-test-summary {
+            display: grid;
+            gap: 6px;
+        }
+
+        .step-test-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .step-test-section-title {
+            font-weight: 600;
+        }
+
+        .step-test-pre {
+            margin: 0;
+            padding: 12px;
+            border: 1px solid #d7dde5;
+            border-radius: 6px;
+            background-color: #f7f9fc;
+            max-height: 220px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .step-test-hint {
+            color: #5c6670;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .step-test-error {
+            color: #b42318;
+            font-weight: 600;
+        }
+    </style>
+}
 
 @section Scripts {
     <script src="~/js/scheduler-editor.js"></script>
+    <script src="~/js/schedule-grid-editor.js"></script>
     <script>
         $(function () {
             var pageConfig = @Html.Raw(pageConfigJson);
             var serviceUrl = pageConfig.apiBaseUrl;
             var hubUrl = pageConfig.hubUrl;
             var schedulerRules = window.TaskSchedulerScheduler.createHelpers(pageConfig.scheduleEditor);
-            var scheduleTriggerTypes = schedulerRules.triggerTypes;
-            var weekDayOptions = schedulerRules.weekDayOptions;
-            var parseDaysOfWeek = schedulerRules.parseDaysOfWeek;
-            var applyTriggerDefaults = schedulerRules.applyTriggerDefaults;
-            var buildScheduleSummary = schedulerRules.buildScheduleSummary;
-            var getTriggerRule = schedulerRules.getTriggerRule;
-            var validateSchedule = schedulerRules.validateSchedule;
+            var scheduleGridEditor = window.TaskSchedulerScheduleGrid.create({
+                serviceUrl: serviceUrl,
+                schedulerRules: schedulerRules
+            });
+            var stepRequestEchoUrl = new URL("RequestTest/Echo", serviceUrl).toString();
 
             // ============ STORES ============
             var tasksStore = DevExpress.data.AspNet.createStore({
@@ -45,17 +95,6 @@
                 insertUrl: serviceUrl + "Steps/Post",
                 updateUrl: serviceUrl + "Steps/Put",
                 deleteUrl: serviceUrl + "Steps/Delete",
-                onBeforeSend: function (method, ajaxOptions) {
-                    ajaxOptions.xhrFields = { withCredentials: true };
-                }
-            });
-
-            var triggersStore = DevExpress.data.AspNet.createStore({
-                key: "Id",
-                loadUrl: serviceUrl + "Schedules/Get",
-                insertUrl: serviceUrl + "Schedules/Post",
-                updateUrl: serviceUrl + "Schedules/Put",
-                deleteUrl: serviceUrl + "Schedules/Delete",
                 onBeforeSend: function (method, ajaxOptions) {
                     ajaxOptions.xhrFields = { withCredentials: true };
                 }
@@ -100,6 +139,150 @@
             }).catch(function (err) {
                 return console.error(err.toString());
             });
+
+            function extractApiErrorMessage(error) {
+                var responseJson = error && (error.responseJSON || (error.xhr && error.xhr.responseJSON));
+                if (responseJson) {
+                    if (responseJson.message) {
+                        return responseJson.message;
+                    }
+
+                    if (Array.isArray(responseJson.errors) && responseJson.errors.length) {
+                        return responseJson.errors
+                            .map(function(item) { return item.message || item.Message; })
+                            .filter(Boolean)
+                            .join("\n");
+                    }
+                }
+
+                return error && error.responseText
+                    ? error.responseText
+                    : "Request test failed.";
+            }
+
+            function formatStructuredValue(value) {
+                if (value === null || value === undefined || value === "") {
+                    return "(empty)";
+                }
+
+                if (typeof value === "string") {
+                    var text = value.trim();
+                    if (!text.length) {
+                        return "(empty)";
+                    }
+
+                    try {
+                        return JSON.stringify(JSON.parse(text), null, 2);
+                    } catch (error) {
+                        return value;
+                    }
+                }
+
+                return JSON.stringify(value, null, 2);
+            }
+
+            function appendStepTestSection(container, title, value) {
+                $("<div>")
+                    .addClass("step-test-section")
+                    .append($("<div>").addClass("step-test-section-title").text(title))
+                    .append($("<pre>").addClass("step-test-pre").text(formatStructuredValue(value)))
+                    .appendTo(container);
+            }
+
+            function showStepRequestTestResult(stepName, envelope) {
+                var payload = envelope.data || envelope.Data || {};
+                var request = payload.request || payload.Request || {};
+                var response = payload.response || payload.Response || {};
+
+                $("#popupStepRequestTest").dxPopup({
+                    title: "Request Test: " + (stepName || payload.stepName || payload.StepName || "Step"),
+                    visible: true,
+                    showTitle: true,
+                    width: 960,
+                    maxHeight: 760,
+                    height: "auto",
+                    contentTemplate: function(content) {
+                        var wrapper = $("<div>").addClass("step-test-popup");
+                        var statusText = response.statusCode || response.StatusCode
+                            ? (response.statusCode || response.StatusCode) + " " + (response.reasonPhrase || response.ReasonPhrase || "")
+                            : "No HTTP response";
+
+                        $("<div>")
+                            .addClass("step-test-summary")
+                            .append($("<div>").text("Target URL: " + (request.url || request.Url || "")))
+                            .append($("<div>").text("Method: " + (request.method || request.Method || "")))
+                            .append($("<div>").text("HTTP Status: " + statusText.trim()))
+                            .append($("<div>").text("Duration: " + (payload.durationMs || payload.DurationMs || 0) + " ms"))
+                            .appendTo(wrapper);
+
+                        if (response.errorMessage || response.ErrorMessage) {
+                            $("<div>")
+                                .addClass("step-test-error")
+                                .text("Transport Error: " + (response.errorMessage || response.ErrorMessage))
+                                .appendTo(wrapper);
+                        }
+
+                        appendStepTestSection(wrapper, "Request Headers", request.headers || request.Headers);
+                        appendStepTestSection(wrapper, "Request Body", request.body || request.Body);
+                        appendStepTestSection(wrapper, "Response Headers", response.headers || response.Headers);
+                        appendStepTestSection(wrapper, "Response Body", response.body || response.Body);
+
+                        wrapper.appendTo(content);
+                    }
+                }).dxPopup("instance").show();
+            }
+
+            function runStepRequestTest(stepData) {
+                var payload = {
+                    name: stepData.Name || stepData.name || "",
+                    apiUrl: stepData.ApiUrl || stepData.apiUrl || "",
+                    httpMethod: stepData.HttpMethod || stepData.httpMethod || "GET",
+                    headers: stepData.Headers || stepData.headers || "",
+                    body: stepData.Body || stepData.body || ""
+                };
+
+                return $.ajax({
+                    url: serviceUrl + "StepRequestTests/Run",
+                    method: "POST",
+                    contentType: "application/json; charset=utf-8",
+                    data: JSON.stringify(payload),
+                    xhrFields: {
+                        withCredentials: true
+                    }
+                }).then(function(response) {
+                    DevExpress.ui.notify("Request test completed.", "success", 2000);
+                    showStepRequestTestResult(payload.name, response);
+                    return response;
+                }, function(error) {
+                    DevExpress.ui.notify(extractApiErrorMessage(error), "error", 4000);
+                    throw error;
+                });
+            }
+
+            function getCurrentStepFormData(stepForm) {
+                var formData = $.extend({}, stepForm.option("formData") || {});
+                var popupContent = $(".dx-overlay-content:visible .dx-popup-content").last();
+
+                function readPopupValue(selector, fallbackValue) {
+                    var editor = popupContent.find(selector).first();
+                    return editor.length ? editor.val() : fallbackValue;
+                }
+
+                ["Name", "ApiUrl", "HttpMethod", "Headers", "Body"].forEach(function(fieldName) {
+                    var editor = stepForm.getEditor(fieldName);
+                    if (editor) {
+                        formData[fieldName] = editor.option("value");
+                    }
+                });
+
+                formData.Name = readPopupValue("input.dx-texteditor-input[role='textbox']", formData.Name || "");
+                formData.ApiUrl = readPopupValue("input.dx-texteditor-input[placeholder='e.g. https://localhost:7253/api/RequestTest/Echo']", formData.ApiUrl || "");
+                formData.HttpMethod = readPopupValue("input.dx-texteditor-input[role='combobox']", formData.HttpMethod || "GET");
+                formData.Headers = readPopupValue("textarea.dx-texteditor-input[placeholder='Authorization: Bearer token\nX-Test-Id: sample\nContent-Type: application/json']", formData.Headers || "");
+                formData.Body = readPopupValue("textarea.dx-texteditor-input[placeholder='{" + '"sample"' + ":true}']", formData.Body || "");
+
+                return formData;
+            }
 
             // ============ MAIN GRID ============
             $("#gridTasks").dxDataGrid({
@@ -307,6 +490,8 @@
 
             // ============ STEPS GRID ============
             function createStepsGrid(container, taskId) {
+                var stepEditForm = null;
+
                 $("<div>").dxDataGrid({
                     dataSource: {
                         store: stepsStore,
@@ -360,6 +545,12 @@
                             height: 650
                         },
                         form: {
+                            onInitialized: function(args) {
+                                stepEditForm = args.component;
+                            },
+                            onContentReady: function(args) {
+                                stepEditForm = args.component;
+                            },
                             items: [ {
                                     itemType: "group",
                                     colSpan: 2,
@@ -378,16 +569,55 @@
                                     caption: "Request",
                                     colSpan: 2,
                                     items: [
-                                        "ApiUrl",
+                                        {
+                                            dataField: "ApiUrl",
+                                            editorOptions: {
+                                                placeholder: "e.g. " + stepRequestEchoUrl
+                                            }
+                                        },
                                         {
                                             dataField: "Headers",
                                             editorType: "dxTextArea",
-                                            editorOptions: { height: 80 }
+                                            editorOptions: {
+                                                height: 90,
+                                                placeholder: "Authorization: Bearer token\nX-Test-Id: sample\nContent-Type: application/json"
+                                            }
                                         },
                                         {
                                             dataField: "Body",
                                             editorType: "dxTextArea",
-                                            editorOptions: { height: 100 }
+                                            editorOptions: {
+                                                height: 120,
+                                                placeholder: '{"sample":true}'
+                                            }
+                                        },
+                                        {
+                                            colSpan: 2,
+                                            template: function(data, itemElement) {
+                                                $("<div>")
+                                                    .dxButton({
+                                                        text: "Test Request",
+                                                        type: "default",
+                                                        icon: "check",
+                                                        onClick: function() {
+                                                            if (!stepEditForm) {
+                                                                return;
+                                                            }
+
+                                                            runStepRequestTest(getCurrentStepFormData(stepEditForm));
+                                                        }
+                                                    })
+                                                    .appendTo(itemElement);
+                                            }
+                                        },
+                                        {
+                                            colSpan: 2,
+                                            template: function(data, itemElement) {
+                                                $("<div>")
+                                                    .addClass("step-test-hint")
+                                                    .text("Built-in echo URL for quick testing: " + stepRequestEchoUrl + "?statusCode=200")
+                                                    .appendTo(itemElement);
+                                            }
                                         }
                                     ]
                                 }
@@ -435,6 +665,21 @@
                         {
                             dataField: "Body",
                             visible: false
+                        },
+                        {
+                            type: "buttons",
+                            width: 120,
+                            buttons: [
+                                {
+                                    hint: "Test Request",
+                                    icon: "check",
+                                    onClick: function(e) {
+                                        runStepRequestTest(e.row.data);
+                                    }
+                                },
+                                "edit",
+                                "delete"
+                            ]
                         }
                     ],
 
@@ -447,405 +692,7 @@
 
             // ============ TRIGGERS GRID ============
             function createTriggersGrid(container, taskId) {
-                var scheduleEditForm = null;
-                var scheduleEditorState = {
-                    triggerType: schedulerRules.defaultTriggerType
-                };
-
-                function applyScheduleFormLayout(triggerType) {
-                    scheduleEditorState.triggerType = triggerType || schedulerRules.defaultTriggerType;
-
-                    if (!scheduleEditForm) {
-                        return;
-                    }
-
-                    var formData = scheduleEditForm.option("formData") || {};
-                    var triggerRule = getTriggerRule(scheduleEditorState.triggerType);
-
-                    if (!triggerRule) {
-                        return;
-                    }
-
-                    if (triggerRule.usesIntervalTime && !formData.IntervalTime && triggerRule.defaultIntervalTime) {
-                        scheduleEditForm.updateData("IntervalTime", triggerRule.defaultIntervalTime);
-                    }
-
-                    if (triggerRule.usesDaysOfWeek && !parseDaysOfWeek(formData.DaysOfWeek).length && triggerRule.defaultDaysOfWeek.length) {
-                        scheduleEditForm.updateData("DaysOfWeek", triggerRule.defaultDaysOfWeek.slice());
-                    }
-
-                    if (triggerRule.usesDayOfMonth && !formData.DayOfMonth && triggerRule.defaultDayOfMonth) {
-                        scheduleEditForm.updateData("DayOfMonth", triggerRule.defaultDayOfMonth);
-                    }
-
-                    scheduleEditForm.itemOption("timingGroup.intervalTimeField", "visible", !!triggerRule.usesIntervalTime);
-                    scheduleEditForm.itemOption("timingGroup.startTimeField", "visible", !!triggerRule.usesStartTime);
-                    scheduleEditForm.itemOption("timingGroup.weekdaysField", "visible", !!triggerRule.usesDaysOfWeek);
-                    scheduleEditForm.itemOption("timingGroup.dayOfMonthField", "visible", !!triggerRule.usesDayOfMonth);
-                }
-
-                $("<div>").dxDataGrid({
-                    dataSource: {
-                        store: triggersStore,
-                        filter: ["TaskId", "=", taskId]
-                    },
-                    remoteOperations: false,
-                    showBorders: true,
-                    rowAlternationEnabled: true,
-                    hoverStateEnabled: true,
-                    columnAutoWidth: true,
-                    wordWrapEnabled: true,
-                    noDataText: "No schedules configured yet.",
-                    width: "100%",
-                    height: "100%",
-                    scrolling: { mode: "virtual" },
-                    editing: {
-                        mode: "popup",
-                        allowAdding: true,
-                        allowUpdating: true,
-                        allowDeleting: true,
-                        useIcons: true,
-                        popup: {
-                            title: "Schedule Rule",
-                            showTitle: true,
-                            width: 760,
-                            maxHeight: 720,
-                            height: "auto"
-                        },
-                        form: {
-                            colCount: 2,
-                            labelLocation: "top",
-                            onInitialized: function(args) {
-                                scheduleEditForm = args.component;
-                                applyScheduleFormLayout(scheduleEditorState.triggerType);
-                            },
-                            onContentReady: function(args) {
-                                scheduleEditForm = args.component;
-                                applyScheduleFormLayout(scheduleEditorState.triggerType);
-                            },
-                            items: [
-                                {
-                                    itemType: "group",
-                                    name: "generalGroup",
-                                    caption: "General",
-                                    colSpan: 2,
-                                    colCount: 2,
-                                    items: [
-                                        {
-                                            dataField: "Name",
-                                            colSpan: 2,
-                                            editorOptions: {
-                                                placeholder: "e.g. Morning dispatch"
-                                            }
-                                        },
-                                        {
-                                            dataField: "Description",
-                                            colSpan: 2,
-                                            editorType: "dxTextArea",
-                                            editorOptions: {
-                                                height: 90,
-                                                placeholder: "Optional note for operators"
-                                            }
-                                        },
-                                        {
-                                            dataField: "TriggerType"
-                                        },
-                                        {
-                                            dataField: "IsActive",
-                                            label: {
-                                                text: "Enabled"
-                                            }
-                                        }
-                                    ]
-                                },
-                                {
-                                    itemType: "group",
-                                    name: "timingGroup",
-                                    caption: "Timing",
-                                    colSpan: 2,
-                                    colCount: 2,
-                                    items: [
-                                        {
-                                            name: "intervalTimeField",
-                                            dataField: "IntervalTime",
-                                            label: {
-                                                text: "Every (minutes)"
-                                            },
-                                            editorType: "dxNumberBox",
-                                            editorOptions: {
-                                                min: 1,
-                                                showSpinButtons: true,
-                                                step: 1
-                                            }
-                                        },
-                                        {
-                                            name: "startTimeField",
-                                            dataField: "StartTime",
-                                            label: {
-                                                text: "Run At"
-                                            },
-                                            editorType: "dxDateBox",
-                                            editorOptions: {
-                                                type: "time",
-                                                dateSerializationFormat: "HH:mm:ss",
-                                                displayFormat: "HH:mm",
-                                                pickerType: "native",
-                                                interval: 30,
-                                                useMaskBehavior: true,
-                                                invalidDateMessage: "The time must have the following format: HH:mm"
-                                            }
-                                        },
-                                        {
-                                            name: "weekdaysField",
-                                            dataField: "DaysOfWeek",
-                                            colSpan: 2,
-                                            label: {
-                                                text: "Weekdays"
-                                            },
-                                            editorType: "dxTagBox",
-                                            editorOptions: {
-                                                dataSource: weekDayOptions,
-                                                valueExpr: "value",
-                                                displayExpr: "text",
-                                                showSelectionControls: true,
-                                                applyValueMode: "useButtons",
-                                                maxDisplayedTags: 4,
-                                                multiline: false
-                                            }
-                                        },
-                                        {
-                                            name: "dayOfMonthField",
-                                            dataField: "DayOfMonth",
-                                            label: {
-                                                text: "Day Of Month"
-                                            },
-                                            editorType: "dxNumberBox",
-                                            editorOptions: {
-                                                min: 1,
-                                                max: 31,
-                                                showSpinButtons: true,
-                                                step: 1
-                                            }
-                                        },
-                                        {
-                                            dataField: "NextExecutionTime",
-                                            label: {
-                                                text: "Next Run Preview"
-                                            },
-                                            editorType: "dxDateBox",
-                                            editorOptions: {
-                                                displayFormat: "dd/MM/yyyy HH:mm",
-                                                readOnly: true,
-                                                disabled: true
-                                            }
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-
-                    onEditorPreparing: function(e) {
-                        var rowData = e.row && e.row.data ? e.row.data : {};
-                        var triggerType = rowData.TriggerType || scheduleEditorState.triggerType;
-                        var triggerRule = getTriggerRule(triggerType);
-
-                        if (e.dataField === "TriggerType") {
-                            var defaultHandler = e.editorOptions.onValueChanged;
-                            e.editorOptions.onValueChanged = function(args) {
-                                applyTriggerDefaults(rowData, args.value);
-                                e.setValue(args.value);
-
-                                if (scheduleEditForm) {
-                                    scheduleEditForm.updateData("IntervalTime", rowData.IntervalTime);
-                                    scheduleEditForm.updateData("StartTime", rowData.StartTime);
-                                    scheduleEditForm.updateData("DaysOfWeek", parseDaysOfWeek(rowData.DaysOfWeek));
-                                    scheduleEditForm.updateData("DayOfMonth", rowData.DayOfMonth);
-                                }
-
-                                applyScheduleFormLayout(args.value);
-
-                                if (defaultHandler) {
-                                    defaultHandler(args);
-                                }
-                            };
-                        }
-
-                        if (e.dataField === "IntervalTime") {
-                            e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesIntervalTime;
-                            if (!triggerRule || !triggerRule.usesIntervalTime) {
-                                e.editorOptions.value = null;
-                            }
-                        }
-
-                        if (e.dataField === "StartTime") {
-                            e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesStartTime;
-                            if (!triggerRule || !triggerRule.usesStartTime) {
-                                e.editorOptions.value = null;
-                            }
-                        }
-
-                        if (e.dataField === "DaysOfWeek") {
-                            e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.value = parseDaysOfWeek(rowData.DaysOfWeek);
-                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesDaysOfWeek;
-                            e.editorOptions.onValueChanged = function(args) {
-                                e.setValue(args.value);
-                            };
-                        }
-
-                        if (e.dataField === "DayOfMonth") {
-                            e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesDayOfMonth;
-                            if (!triggerRule || !triggerRule.usesDayOfMonth) {
-                                e.editorOptions.value = null;
-                            }
-                        }
-                    },
-
-                    onRowValidating: function(e) {
-                        var nextData = $.extend({}, e.oldData, e.newData);
-
-                        var validationError = validateSchedule(nextData);
-                        if (validationError) {
-                            e.isValid = false;
-                            e.errorText = validationError;
-                        }
-                    },
-
-                    onEditingStart: function(e) {
-                        scheduleEditorState.triggerType = e.data.TriggerType || schedulerRules.defaultTriggerType;
-                        e.component.option("editing.popup.title", "Edit Schedule");
-                    },
-
-                    columns: [
-                         {
-                            dataField: "Name",
-                            caption: "Schedule",
-                            minWidth: 180,
-                            validationRules: [{ type: "required" }]
-                        },
-                         {
-                            dataField: "Description",
-                            caption: "Description",
-                            minWidth: 180,
-                            hidingPriority: 1
-                        },
-                        {
-                            dataField: "IsActive",
-                            caption: "Enabled",
-                            dataType: "boolean",
-                            width: 90
-                        },
-                        {
-                            dataField: "TriggerType",
-                            caption: "Pattern",
-                            width: 120,
-                            lookup: {
-                                dataSource: scheduleTriggerTypes
-                            },
-                            validationRules: [{ type: "required" }],
-                            setCellValue: function(newData, value) {
-                                applyTriggerDefaults(newData, value);
-                            }
-                        },
-                        {
-                            caption: "Recurrence",
-                            minWidth: 230,
-                            allowEditing: false,
-                            calculateCellValue: function(data) {
-                                return buildScheduleSummary(data);
-                            }
-                        },
-                        {
-                            dataField: "IntervalTime",
-                            visible: false,
-                            showInColumnChooser: false
-                        },
-                        {
-                            dataField: "StartTime",
-                            visible: false,
-                            showInColumnChooser: false
-                        },
-                        {
-                            dataField: "DaysOfWeek",
-                            visible: false,
-                            showInColumnChooser: false
-                        },
-                        {
-                            dataField: "DayOfMonth",
-                            visible: false,
-                            showInColumnChooser: false
-                        },
-                        {
-                            dataField: "NextExecutionTime",
-                            caption: "Next Run",
-                            dataType: "datetime",
-                            format: "dd/MM/yyyy HH:mm",
-                            allowEditing: false,
-                            width: 150
-                        },
-                        {
-                            type: "buttons",
-                            width: 110,
-                            buttons: [
-                                {
-                                    name: "edit",
-                                    hint: "Open schedule editor"
-                                },
-                                {
-                                    name: "delete",
-                                    hint: "Delete schedule"
-                                }
-                            ]
-                        }
-                        
-                    ],
-
-                    onToolbarPreparing: function(e) {
-                        e.toolbarOptions.items = e.toolbarOptions.items.filter(function(item) {
-                            return item.name !== "addRowButton";
-                        });
-
-                        e.toolbarOptions.items.unshift({
-                            location: "after",
-                            widget: "dxButton",
-                            options: {
-                                icon: "event",
-                                text: "Add Schedule",
-                                type: "default",
-                                stylingMode: "contained",
-                                onClick: function() {
-                                    e.component.addRow();
-                                }
-                            }
-                        });
-
-                        e.toolbarOptions.items.unshift({
-                            location: "after",
-                            widget: "dxButton",
-                            options: {
-                                icon: "refresh",
-                                hint: "Refresh schedules",
-                                onClick: function() {
-                                    e.component.refresh();
-                                }
-                            }
-                        });
-                    },
-
-                    onInitNewRow: function(e) {
-                        e.data.TaskId = taskId;
-                        e.data.TriggerType = schedulerRules.defaultTriggerType;
-                        e.data.IsActive = true;
-                        applyTriggerDefaults(e.data, e.data.TriggerType);
-
-                        scheduleEditorState.triggerType = e.data.TriggerType;
-                        e.component.option("editing.popup.title", "Add Schedule");
-                    }
-                }).appendTo(container);
+                scheduleGridEditor.render(container, taskId);
             }
                     // ============ STEP LOGS POPUP ============
         function showStepLogs(taskId, taskName) {

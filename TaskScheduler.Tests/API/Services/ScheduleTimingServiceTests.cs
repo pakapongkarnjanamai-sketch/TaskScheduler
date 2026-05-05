@@ -7,6 +7,22 @@ namespace TaskScheduler.Tests.API.Services;
 public class ScheduleTimingServiceTests
 {
     [Fact]
+    public void CalculateNextRun_WhenIntervalScheduleIsOneMinute_ReturnsNextMinuteBoundary()
+    {
+        var clock = new FixedDateTime(new DateTime(2026, 5, 5, 9, 10, 30));
+        var service = new ScheduleTimingService(clock);
+        var schedule = new Schedule
+        {
+            TriggerType = ScheduleTriggerTypes.Interval,
+            IntervalTime = 1
+        };
+
+        service.CalculateNextRun(schedule, new DateTime(2026, 5, 5, 9, 10, 30));
+
+        Assert.Equal(new DateTime(2026, 5, 5, 9, 11, 0), schedule.NextExecutionTime);
+    }
+
+    [Fact]
     public void CalculateNextRun_WhenWeeklyScheduleHasMultipleWeekdays_ReturnsNextSelectedWeekday()
     {
         var clock = new FixedDateTime(new DateTime(2026, 5, 5, 9, 10, 0));

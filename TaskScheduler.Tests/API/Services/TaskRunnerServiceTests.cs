@@ -200,6 +200,49 @@ public class TaskRunnerServiceTests
         Assert.Equal(2, hubContext.Proxy.Invocations.Count);
     }
 
+    [Fact]
+    public async Task RunTask_WhenStepHasHeadersAndPatchBody_SendsConfiguredRequest()
+    {
+        await using var context = CreateContext();
+        var schedule = await SeedIntervalScheduleAsync(context, 15, new Step
+        {
+            Name = "Patch employee",
+            Order = 1,
+            ApiUrl = "https://example.test/api/employee",
+            HttpMethod = "PATCH",
+            Headers = "X-Test-Header: scheduler\nContent-Type: application/json",
+            Body = "{\"active\":true}"
+        });
+        var scheduleTimingService = CreateScheduleTimingService();
+
+        HttpRequestMessage? capturedRequest = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler((request, _) =>
+        {
+            capturedRequest = request;
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("ok")
+            });
+        }));
+
+        var hubContext = new RecordingTaskHubContext();
+        var service = new TaskRunnerService(
+            context,
+            new StubHttpClientFactory(httpClient),
+            NullLogger<TaskRunnerService>.Instance,
+            scheduleTimingService,
+            hubContext);
+
+        await service.RunTask(schedule.Id);
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(HttpMethod.Patch, capturedRequest!.Method);
+        Assert.True(capturedRequest.Headers.TryGetValues("X-Test-Header", out var headerValues));
+        Assert.Equal("scheduler", Assert.Single(headerValues));
+        Assert.Equal("{\"active\":true}", await capturedRequest.Content!.ReadAsStringAsync());
+    }
+
     private static Step CreateSuccessfulStep(string name, int order)
     {
         return new Step

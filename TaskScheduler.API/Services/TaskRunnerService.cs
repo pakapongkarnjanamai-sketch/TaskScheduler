@@ -116,16 +116,13 @@ namespace TaskScheduler.API.Services
 
                     try
                     {
-                        var request = new HttpRequestMessage
+                        var request = StepHttpRequestFactory.Create(new StepHttpRequestDefinition
                         {
-                            RequestUri = new Uri(step.ApiUrl),
-                            Method = new HttpMethod(step.HttpMethod)
-                        };
-
-                        if (!string.IsNullOrEmpty(step.Body) && (step.HttpMethod == "POST" || step.HttpMethod == "PUT"))
-                        {
-                            request.Content = new StringContent(step.Body, Encoding.UTF8, "application/json");
-                        }
+                            ApiUrl = step.ApiUrl,
+                            HttpMethod = step.HttpMethod,
+                            Headers = step.Headers,
+                            Body = step.Body
+                        });
 
                         var response = await client.SendAsync(request);
                         var content = await response.Content.ReadAsStringAsync();
