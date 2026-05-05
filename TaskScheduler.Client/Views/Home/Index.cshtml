@@ -1,5 +1,8 @@
-﻿@{
+﻿@using System.Text.Json
+@model global::TaskScheduler.Client.ViewModels.Home.IndexViewModel
+@{
     ViewData["Title"] = "Task Scheduler Management";
+    var pageConfigJson = JsonSerializer.Serialize(Model, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 }
 
 <div class="container-fluid full-height-container mt-3">
@@ -9,122 +12,20 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/scheduler-editor.js"></script>
     <script>
         $(function () {
-             var serviceUrl = "https://localhost:7253/api/";
-            // var serviceUrl = "https://ap-ntc2138-qawb/TaskScheduler/Service/api/";
-            var hubUrl = new URL("../taskHub", serviceUrl).toString();
-            var scheduleTriggerTypes = ["Interval", "Daily", "Weekly", "Monthly"];
-            var weekDayOptions = [
-                { value: "Monday", text: "Mon" },
-                { value: "Tuesday", text: "Tue" },
-                { value: "Wednesday", text: "Wed" },
-                { value: "Thursday", text: "Thu" },
-                { value: "Friday", text: "Fri" },
-                { value: "Saturday", text: "Sat" },
-                { value: "Sunday", text: "Sun" }
-            ];
-
-            function formatScheduleTime(value) {
-                if (!value) return "";
-
-                if (value instanceof Date) {
-                    return DevExpress.localization.formatDate(value, "HH:mm");
-                }
-
-                var text = String(value);
-                var timeMatch = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-                if (timeMatch) {
-                    return timeMatch[1].padStart(2, "0") + ":" + timeMatch[2];
-                }
-
-                return text.length >= 5 ? text.substring(0, 5) : text;
-            }
-
-            function parseDaysOfWeek(value) {
-                if (!value) return [];
-
-                if (Array.isArray(value)) {
-                    return value.filter(Boolean);
-                }
-
-                return String(value)
-                    .split(",")
-                    .map(function(day) { return day.trim(); })
-                    .filter(Boolean);
-            }
-
-            function formatDaysOfWeek(value) {
-                var days = parseDaysOfWeek(value);
-                if (!days.length) return "";
-
-                return days.map(function(day) {
-                    var option = weekDayOptions.find(function(item) { return item.value === day; });
-                    return option ? option.text : day;
-                }).join(", ");
-            }
-
-            function isTimeBasedTrigger(triggerType) {
-                return triggerType === "Daily" || triggerType === "Weekly" || triggerType === "Monthly";
-            }
-
-            function applyTriggerDefaults(target, triggerType) {
-                target.TriggerType = triggerType;
-
-                if (triggerType === "Interval") {
-                    target.IntervalTime = target.IntervalTime || 15;
-                    target.StartTime = null;
-                    target.DaysOfWeek = null;
-                    target.DayOfMonth = null;
-                    return;
-                }
-
-                target.IntervalTime = null;
-
-                if (triggerType === "Daily") {
-                    target.DaysOfWeek = null;
-                    target.DayOfMonth = null;
-                    return;
-                }
-
-                if (triggerType === "Weekly") {
-                    var selectedDays = parseDaysOfWeek(target.DaysOfWeek);
-                    target.DaysOfWeek = selectedDays.length ? selectedDays : ["Monday"];
-                    target.DayOfMonth = null;
-                    return;
-                }
-
-                if (triggerType === "Monthly") {
-                    target.DaysOfWeek = null;
-                    target.DayOfMonth = target.DayOfMonth || 1;
-                }
-            }
-
-            function buildScheduleSummary(schedule) {
-                if (!schedule) return "";
-
-                if (schedule.TriggerType === "Interval") {
-                    return schedule.IntervalTime
-                        ? "Every " + schedule.IntervalTime + " minutes"
-                        : "Recurring interval";
-                }
-
-                if (schedule.TriggerType === "Daily") {
-                    return "Every day at " + (formatScheduleTime(schedule.StartTime) || "--:--");
-                }
-
-                if (schedule.TriggerType === "Weekly") {
-                    var days = formatDaysOfWeek(schedule.DaysOfWeek) || "Select weekdays";
-                    return days + " at " + (formatScheduleTime(schedule.StartTime) || "--:--");
-                }
-
-                if (schedule.TriggerType === "Monthly") {
-                    var dayText = schedule.DayOfMonth ? "Day " + schedule.DayOfMonth : "Select day";
-                    return dayText + " at " + (formatScheduleTime(schedule.StartTime) || "--:--");
-                }
-
-                return "";
-            }
+            var pageConfig = @Html.Raw(pageConfigJson);
+            var serviceUrl = pageConfig.apiBaseUrl;
+            var hubUrl = pageConfig.hubUrl;
+            var schedulerRules = window.TaskSchedulerScheduler.createHelpers(pageConfig.scheduleEditor);
+            var scheduleTriggerTypes = schedulerRules.triggerTypes;
+            var weekDayOptions = schedulerRules.weekDayOptions;
+            var parseDaysOfWeek = schedulerRules.parseDaysOfWeek;
+            var applyTriggerDefaults = schedulerRules.applyTriggerDefaults;
+            var buildScheduleSummary = schedulerRules.buildScheduleSummary;
+            var getTriggerRule = schedulerRules.getTriggerRule;
+            var validateSchedule = schedulerRules.validateSchedule;
 
             // ============ STORES ============
             var tasksStore = DevExpress.data.AspNet.createStore({
@@ -409,11 +310,42 @@
                 $("<div>").dxDataGrid({
                     dataSource: {
                         store: stepsStore,
-                        filter: ["TaskId", "=", taskId]
+                        filter: ["TaskId", "=", taskId],
+                        sort: [{ selector: "Order", desc: false }]
                     },
-                    remoteOperations: false,
+                    remoteOperations: true,
+                    sorting: {
+                        mode: "none"
+                    },
                     showBorders: true,
                     columnAutoWidth: true,
+                    rowDragging: {
+                        allowReordering: true,
+                        showDragIcons: true,
+                        dropFeedbackMode: "push",
+                        onReorder: function(e) {
+                            if (e.fromIndex === e.toIndex) {
+                                return;
+                            }
+
+                            var visibleRows = e.component.getVisibleRows();
+                            var newOrder = visibleRows[e.toIndex].data.Order;
+                            var deferred = $.Deferred();
+
+                            stepsStore.update(e.itemData.Id, { Order: newOrder }).then(function() {
+                                e.component.refresh().then(deferred.resolve, deferred.reject);
+                            }, function(error) {
+                                var errorMessage = error && error.responseText
+                                    ? error.responseText
+                                    : "Unable to reorder steps.";
+
+                                DevExpress.ui.notify(errorMessage, "error", 3000);
+                                deferred.reject(error);
+                            });
+
+                            e.promise = deferred.promise();
+                        }
+                    },
 
                     editing: {
                         mode: "popup",
@@ -437,7 +369,6 @@
                                     caption: "Basic Info",
                                     colSpan: 2,
                                     items: [
-                                        "Order",
                                         "Name","Description",
                                         "HttpMethod"
                                     ]
@@ -469,11 +400,10 @@
                     columns: [
                         {
                             dataField: "Order",
-                            caption: "#",
+                            caption: "Run Order",
                             width: 60,
                             dataType: "number",
-                            sortOrder: "asc",
-                            validationRules: [{ type: "required" }]
+                            allowEditing: false
                         },
                         {
                             dataField: "Name",
@@ -510,7 +440,6 @@
 
                     onInitNewRow: function(e) {
                         e.data.TaskId = taskId;
-                        e.data.Order = 1;
                         e.data.HttpMethod = "GET";
                     }
                 }).appendTo(container);
@@ -520,30 +449,39 @@
             function createTriggersGrid(container, taskId) {
                 var scheduleEditForm = null;
                 var scheduleEditorState = {
-                    triggerType: "Interval"
+                    triggerType: schedulerRules.defaultTriggerType
                 };
 
                 function applyScheduleFormLayout(triggerType) {
-                    scheduleEditorState.triggerType = triggerType || "Interval";
+                    scheduleEditorState.triggerType = triggerType || schedulerRules.defaultTriggerType;
 
                     if (!scheduleEditForm) {
                         return;
                     }
 
                     var formData = scheduleEditForm.option("formData") || {};
+                    var triggerRule = getTriggerRule(scheduleEditorState.triggerType);
 
-                    if (scheduleEditorState.triggerType === "Interval" && !formData.IntervalTime) {
-                        scheduleEditForm.updateData("IntervalTime", 15);
+                    if (!triggerRule) {
+                        return;
                     }
 
-                    if (scheduleEditorState.triggerType === "Monthly" && !formData.DayOfMonth) {
-                        scheduleEditForm.updateData("DayOfMonth", 1);
+                    if (triggerRule.usesIntervalTime && !formData.IntervalTime && triggerRule.defaultIntervalTime) {
+                        scheduleEditForm.updateData("IntervalTime", triggerRule.defaultIntervalTime);
                     }
 
-                    scheduleEditForm.itemOption("timingGroup.intervalTimeField", "visible", scheduleEditorState.triggerType === "Interval");
-                    scheduleEditForm.itemOption("timingGroup.startTimeField", "visible", isTimeBasedTrigger(scheduleEditorState.triggerType));
-                    scheduleEditForm.itemOption("timingGroup.weekdaysField", "visible", scheduleEditorState.triggerType === "Weekly");
-                    scheduleEditForm.itemOption("timingGroup.dayOfMonthField", "visible", scheduleEditorState.triggerType === "Monthly");
+                    if (triggerRule.usesDaysOfWeek && !parseDaysOfWeek(formData.DaysOfWeek).length && triggerRule.defaultDaysOfWeek.length) {
+                        scheduleEditForm.updateData("DaysOfWeek", triggerRule.defaultDaysOfWeek.slice());
+                    }
+
+                    if (triggerRule.usesDayOfMonth && !formData.DayOfMonth && triggerRule.defaultDayOfMonth) {
+                        scheduleEditForm.updateData("DayOfMonth", triggerRule.defaultDayOfMonth);
+                    }
+
+                    scheduleEditForm.itemOption("timingGroup.intervalTimeField", "visible", !!triggerRule.usesIntervalTime);
+                    scheduleEditForm.itemOption("timingGroup.startTimeField", "visible", !!triggerRule.usesStartTime);
+                    scheduleEditForm.itemOption("timingGroup.weekdaysField", "visible", !!triggerRule.usesDaysOfWeek);
+                    scheduleEditForm.itemOption("timingGroup.dayOfMonthField", "visible", !!triggerRule.usesDayOfMonth);
                 }
 
                 $("<div>").dxDataGrid({
@@ -710,6 +648,7 @@
                     onEditorPreparing: function(e) {
                         var rowData = e.row && e.row.data ? e.row.data : {};
                         var triggerType = rowData.TriggerType || scheduleEditorState.triggerType;
+                        var triggerRule = getTriggerRule(triggerType);
 
                         if (e.dataField === "TriggerType") {
                             var defaultHandler = e.editorOptions.onValueChanged;
@@ -734,16 +673,16 @@
 
                         if (e.dataField === "IntervalTime") {
                             e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = triggerType !== "Interval";
-                            if (triggerType !== "Interval") {
+                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesIntervalTime;
+                            if (!triggerRule || !triggerRule.usesIntervalTime) {
                                 e.editorOptions.value = null;
                             }
                         }
 
                         if (e.dataField === "StartTime") {
                             e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = !isTimeBasedTrigger(triggerType);
-                            if (!isTimeBasedTrigger(triggerType)) {
+                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesStartTime;
+                            if (!triggerRule || !triggerRule.usesStartTime) {
                                 e.editorOptions.value = null;
                             }
                         }
@@ -751,7 +690,7 @@
                         if (e.dataField === "DaysOfWeek") {
                             e.editorOptions = e.editorOptions || {};
                             e.editorOptions.value = parseDaysOfWeek(rowData.DaysOfWeek);
-                            e.editorOptions.disabled = triggerType !== "Weekly";
+                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesDaysOfWeek;
                             e.editorOptions.onValueChanged = function(args) {
                                 e.setValue(args.value);
                             };
@@ -759,8 +698,8 @@
 
                         if (e.dataField === "DayOfMonth") {
                             e.editorOptions = e.editorOptions || {};
-                            e.editorOptions.disabled = triggerType !== "Monthly";
-                            if (triggerType !== "Monthly") {
+                            e.editorOptions.disabled = !triggerRule || !triggerRule.usesDayOfMonth;
+                            if (!triggerRule || !triggerRule.usesDayOfMonth) {
                                 e.editorOptions.value = null;
                             }
                         }
@@ -769,43 +708,15 @@
                     onRowValidating: function(e) {
                         var nextData = $.extend({}, e.oldData, e.newData);
 
-                        if (nextData.TriggerType === "Interval" && (!nextData.IntervalTime || nextData.IntervalTime <= 0)) {
+                        var validationError = validateSchedule(nextData);
+                        if (validationError) {
                             e.isValid = false;
-                            e.errorText = "Interval schedules require an interval time greater than zero.";
-                        }
-
-                        if (nextData.TriggerType === "Daily" && !nextData.StartTime) {
-                            e.isValid = false;
-                            e.errorText = "Daily schedules require a start time.";
-                        }
-
-                        if (nextData.TriggerType === "Weekly") {
-                            if (!nextData.StartTime) {
-                                e.isValid = false;
-                                e.errorText = "Weekly schedules require a start time.";
-                            }
-
-                            if (!parseDaysOfWeek(nextData.DaysOfWeek).length) {
-                                e.isValid = false;
-                                e.errorText = "Weekly schedules require at least one weekday.";
-                            }
-                        }
-
-                        if (nextData.TriggerType === "Monthly") {
-                            if (!nextData.StartTime) {
-                                e.isValid = false;
-                                e.errorText = "Monthly schedules require a start time.";
-                            }
-
-                            if (!nextData.DayOfMonth || nextData.DayOfMonth < 1 || nextData.DayOfMonth > 31) {
-                                e.isValid = false;
-                                e.errorText = "Monthly schedules require a day of month between 1 and 31.";
-                            }
+                            e.errorText = validationError;
                         }
                     },
 
                     onEditingStart: function(e) {
-                        scheduleEditorState.triggerType = e.data.TriggerType || "Interval";
+                        scheduleEditorState.triggerType = e.data.TriggerType || schedulerRules.defaultTriggerType;
                         e.component.option("editing.popup.title", "Edit Schedule");
                     },
 
@@ -927,12 +838,9 @@
 
                     onInitNewRow: function(e) {
                         e.data.TaskId = taskId;
-                        e.data.TriggerType = "Interval";
-                        e.data.IntervalTime = 15;
-                        e.data.StartTime = null;
-                        e.data.DaysOfWeek = null;
-                        e.data.DayOfMonth = null;
+                        e.data.TriggerType = schedulerRules.defaultTriggerType;
                         e.data.IsActive = true;
+                        applyTriggerDefaults(e.data, e.data.TriggerType);
 
                         scheduleEditorState.triggerType = e.data.TriggerType;
                         e.component.option("editing.popup.title", "Add Schedule");

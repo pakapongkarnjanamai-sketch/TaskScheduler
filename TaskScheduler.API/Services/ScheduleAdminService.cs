@@ -12,7 +12,6 @@ namespace TaskScheduler.API.Services;
 
 public class ScheduleAdminService
 {
-    private static readonly string[] SupportedTriggerTypes = ScheduleTriggerTypes.All;
     private static readonly string[] SupportedTimeFormats = ["hh\\:mm", "hh\\:mm\\:ss", "HH\\:mm", "HH\\:mm\\:ss"];
     private static readonly TimeZoneInfo BusinessTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
@@ -63,9 +62,13 @@ public class ScheduleAdminService
             return AdminOperationResult<Schedule>.Invalid(validationError, schedule);
         }
 
-        NormalizeSchedule(schedule);
+        schedule.StartTime = schedule.StartTime.HasValue
+            ? new TimeSpan(schedule.StartTime.Value.Hours, schedule.StartTime.Value.Minutes, 0)
+            : null;
+        schedule.DaysOfWeek = NormalizeDaysOfWeek(schedule.DaysOfWeek);
+        ScheduleRules.Normalize(schedule);
 
-        var scheduleValidationError = BuildScheduleValidationError(schedule);
+        var scheduleValidationError = ScheduleRules.Validate(schedule);
         if (scheduleValidationError is not null)
         {
             return AdminOperationResult<Schedule>.Invalid(scheduleValidationError, schedule);
@@ -99,9 +102,13 @@ public class ScheduleAdminService
             return AdminOperationResult<Schedule>.Invalid(validationError, schedule);
         }
 
-        NormalizeSchedule(schedule);
+        schedule.StartTime = schedule.StartTime.HasValue
+            ? new TimeSpan(schedule.StartTime.Value.Hours, schedule.StartTime.Value.Minutes, 0)
+            : null;
+        schedule.DaysOfWeek = NormalizeDaysOfWeek(schedule.DaysOfWeek);
+        ScheduleRules.Normalize(schedule);
 
-        var scheduleValidationError = BuildScheduleValidationError(schedule);
+        var scheduleValidationError = ScheduleRules.Validate(schedule);
         if (scheduleValidationError is not null)
         {
             return AdminOperationResult<Schedule>.Invalid(scheduleValidationError, schedule);
@@ -206,97 +213,6 @@ public class ScheduleAdminService
         }
 
         return null;
-    }
-
-    private void NormalizeSchedule(Schedule schedule)
-    {
-        schedule.TriggerType = NormalizeTriggerType(schedule.TriggerType);
-        schedule.StartTime = schedule.StartTime.HasValue
-            ? new TimeSpan(schedule.StartTime.Value.Hours, schedule.StartTime.Value.Minutes, 0)
-            : null;
-        schedule.DaysOfWeek = NormalizeDaysOfWeek(schedule.DaysOfWeek);
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Interval, StringComparison.OrdinalIgnoreCase))
-        {
-            schedule.StartTime = null;
-            schedule.DaysOfWeek = null;
-            schedule.DayOfMonth = null;
-            return;
-        }
-
-        schedule.IntervalTime = null;
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Daily, StringComparison.OrdinalIgnoreCase))
-        {
-            schedule.DaysOfWeek = null;
-            schedule.DayOfMonth = null;
-            return;
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Weekly, StringComparison.OrdinalIgnoreCase))
-        {
-            schedule.DayOfMonth = null;
-            return;
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Monthly, StringComparison.OrdinalIgnoreCase))
-        {
-            schedule.DaysOfWeek = null;
-        }
-    }
-
-    private static string? BuildScheduleValidationError(Schedule schedule)
-    {
-        if (!SupportedTriggerTypes.Contains(schedule.TriggerType, StringComparer.OrdinalIgnoreCase))
-        {
-            return "Trigger type must be Interval, Daily, Weekly, or Monthly.";
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Interval, StringComparison.OrdinalIgnoreCase)
-            && schedule.IntervalTime is null or <= 0)
-        {
-            return "Interval time must be greater than zero for interval schedules.";
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Daily, StringComparison.OrdinalIgnoreCase)
-            && !schedule.StartTime.HasValue)
-        {
-            return "Start time is required for daily schedules.";
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Weekly, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!schedule.StartTime.HasValue)
-            {
-                return "Start time is required for weekly schedules.";
-            }
-
-            if (string.IsNullOrWhiteSpace(schedule.DaysOfWeek))
-            {
-                return "Select at least one weekday for weekly schedules.";
-            }
-        }
-
-        if (string.Equals(schedule.TriggerType, ScheduleTriggerTypes.Monthly, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!schedule.StartTime.HasValue)
-            {
-                return "Start time is required for monthly schedules.";
-            }
-
-            if (schedule.DayOfMonth is null or < 1 or > 31)
-            {
-                return "Day of month must be between 1 and 31 for monthly schedules.";
-            }
-        }
-
-        return null;
-    }
-
-    private static string NormalizeTriggerType(string? triggerType)
-    {
-        return SupportedTriggerTypes.FirstOrDefault(type => string.Equals(type, triggerType, StringComparison.OrdinalIgnoreCase))
-            ?? (triggerType ?? string.Empty);
     }
 
     private static string? NormalizeDaysOfWeek(string? rawDays)

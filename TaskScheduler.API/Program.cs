@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.EntityFrameworkCore;
 using TaskScheduler.API.Services; 
 using TaskScheduler.API.Workers;  
@@ -5,6 +6,12 @@ using TaskScheduler.Data;
 using TaskScheduler.Data.Services;
 using TaskScheduler.API.Hubs;
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddAuthentication(NegotiateDefaults.AuthenticationScheme)
+    .AddNegotiate();
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<TaskSchedulerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -52,7 +59,8 @@ if (app.Environment.IsDevelopment())
 }
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
-app.MapHub<TaskHub>("/taskHub");
+app.MapControllers().RequireAuthorization();
+app.MapHub<TaskHub>("/taskHub").RequireAuthorization();
 app.Run();

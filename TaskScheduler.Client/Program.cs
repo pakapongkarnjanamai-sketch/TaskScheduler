@@ -1,6 +1,17 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using TaskScheduler.Client.Options;
+using TaskScheduler.Client.Services;
+
+var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services
+    .AddOptions<TaskSchedulerApiOptions>()
+    .Bind(builder.Configuration.GetSection(TaskSchedulerApiOptions.SectionName))
+    .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out _), "TaskSchedulerApi:BaseUrl must be an absolute URL.")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<HomePageViewModelFactory>();
 
 builder.Services.AddControllersWithViews()
     .AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver());

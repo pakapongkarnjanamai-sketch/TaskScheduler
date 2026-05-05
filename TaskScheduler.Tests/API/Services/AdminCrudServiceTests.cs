@@ -3,12 +3,67 @@ using TaskScheduler.API.Services;
 using TaskScheduler.Data;
 using TaskScheduler.Tests.Support;
 using System.Collections;
+using StepEntity = TaskScheduler.Core.Models.Step;
 using TaskEntity = TaskScheduler.Core.Models.Task;
 
 namespace TaskScheduler.Tests.API.Services;
 
 public class AdminCrudServiceTests
 {
+    [Fact]
+    public async Task StepAdminService_CreateAsync_WhenTaskAlreadyHasSteps_AppendsToTheEnd()
+    {
+        await using var context = CreateContext(new FixedDateTime(new DateTime(2026, 5, 5, 9, 0, 0)));
+        var taskId = await SeedTaskWithStepsAsync(context, ("Login", 1), ("Fetch Data", 2));
+        var service = new StepAdminService(context);
+
+        var result = await service.CreateAsync(
+            $"{{\"taskId\":{taskId},\"name\":\"Publish\",\"description\":\"Export step\",\"apiUrl\":\"https://example.test/publish\",\"httpMethod\":\"POST\"}}");
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(3, result.Value!.Order);
+    }
+
+    [Fact]
+    public async Task StepAdminService_UpdateAsync_WhenStepOrderChanges_ReassignsSequentialOrder()
+    {
+        await using var context = CreateContext(new FixedDateTime(new DateTime(2026, 5, 5, 9, 0, 0)));
+        var taskId = await SeedTaskWithStepsAsync(context, ("Login", 1), ("Fetch Data", 2), ("Publish", 3));
+        var service = new StepAdminService(context);
+
+        var stepToMove = await context.Steps
+            .Where(step => step.TaskId == taskId)
+            .SingleAsync(step => step.Name == "Login");
+
+        var result = await service.UpdateAsync(stepToMove.Id, "{\"Order\":3}");
+
+        Assert.True(result.IsSuccess);
+
+        var reorderedSteps = await context.Steps
+            .Where(step => step.TaskId == taskId)
+            .OrderBy(step => step.Order)
+            .ToListAsync();
+
+        Assert.Collection(
+            reorderedSteps,
+            step =>
+            {
+                Assert.Equal("Fetch Data", step.Name);
+                Assert.Equal(1, step.Order);
+            },
+            step =>
+            {
+                Assert.Equal("Publish", step.Name);
+                Assert.Equal(2, step.Order);
+            },
+            step =>
+            {
+                Assert.Equal("Login", step.Name);
+                Assert.Equal(3, step.Order);
+            });
+    }
+
     [Fact]
     public async Task TaskAdminService_CreateAsync_WhenNameIsMissing_ReturnsValidationError()
     {
@@ -189,5 +244,31 @@ public class AdminCrudServiceTests
             options,
             clock,
             new FakeCurrentUserService());
+    }
+
+    private static async Task<int> SeedTaskWithStepsAsync(TaskSchedulerDbContext context, params (string name, int order)[] steps)
+    {
+        var task = new TaskEntity
+        {
+            Name = "Inventory sync"
+        };
+
+        context.Tasks.Add(task);
+        await context.SaveChangesAsync();
+
+        foreach (var step in steps)
+        {
+            context.Steps.Add(new StepEntity
+            {
+                TaskId = task.Id,
+                Name = step.name,
+                Order = step.order,
+                ApiUrl = $"https://example.test/{step.name.Replace(" ", string.Empty).ToLowerInvariant()}",
+                HttpMethod = "POST"
+            });
+        }
+
+        await context.SaveChangesAsync();
+        return task.Id;
     }
 }
