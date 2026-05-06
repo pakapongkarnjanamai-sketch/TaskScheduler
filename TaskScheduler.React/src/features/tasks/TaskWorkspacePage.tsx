@@ -62,6 +62,7 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   const taskId = Number(taskIdParam)
   const stepId = stepIdParam ? Number(stepIdParam) : null
   const scheduleId = scheduleIdParam ? Number(scheduleIdParam) : null
+  const hasInvalidTaskRoute = !Number.isFinite(taskId) || taskId <= 0
   const { lastUpdate } = useTaskUpdatesContext()
   const [task, setTask] = useState<TaskSummary | null>(null)
   const [step, setStep] = useState<Step | null>(null)
@@ -72,6 +73,12 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   const [stepsRefreshKey, setStepsRefreshKey] = useState(0)
   const [schedulesRefreshKey, setSchedulesRefreshKey] = useState(0)
   const [isRailOpen, setIsRailOpen] = useState(true)
+
+  useEffect(() => {
+    if (hasInvalidTaskRoute) {
+      navigate(taskPaths.catalog, { replace: true })
+    }
+  }, [hasInvalidTaskRoute, navigate])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 960px)')
@@ -95,7 +102,7 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
     let ignore = false
 
     async function doLoadTask() {
-      if (!Number.isFinite(taskId) || taskId <= 0) {
+      if (hasInvalidTaskRoute) {
         setTask(null)
         setStep(null)
         setSchedule(null)
@@ -137,7 +144,7 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
     return () => {
       ignore = true
     }
-  }, [taskId])
+  }, [hasInvalidTaskRoute, taskId])
 
   // Load sub-entity (step / schedule) only when view or sub-entity IDs change
   useEffect(() => {
@@ -146,7 +153,7 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
     async function doLoadSubEntity() {
       setContentError(null)
 
-      if (!Number.isFinite(taskId) || taskId <= 0) {
+      if (hasInvalidTaskRoute) {
         return
       }
 
@@ -189,10 +196,10 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
     return () => {
       ignore = true
     }
-  }, [taskId, view, stepId, scheduleId])
+  }, [hasInvalidTaskRoute, taskId, view, stepId, scheduleId])
 
   async function refreshTaskSummary() {
-    if (!Number.isFinite(taskId) || taskId <= 0) {
+    if (hasInvalidTaskRoute) {
       return
     }
 
@@ -280,19 +287,8 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   }
 
   // Only show a full-screen state when the taskId itself is invalid (can't even show the rail)
-  if (!Number.isFinite(taskId) || taskId <= 0) {
-    return (
-      <section className="workspace-state">
-        <p className="workspace-state__eyebrow">Task Workspace</p>
-        <h2>Unable to open this task</h2>
-        <p>The selected task route is invalid.</p>
-        <div className="workspace-state__actions">
-          <button type="button" className="row-action row-action--primary" onClick={() => navigate(taskPaths.catalog)}>
-            Return to catalog
-          </button>
-        </div>
-      </section>
-    )
+  if (hasInvalidTaskRoute) {
+    return null
   }
 
   return (
