@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import Button from 'devextreme-react/button'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
@@ -30,10 +30,6 @@ function createTaskDraft(task: TaskSummary | null): TaskDraft {
 export function TaskEditorForm({ task, onCancel, onSaved }: TaskEditorFormProps) {
   const [formData, setFormData] = useState<TaskDraft>(() => createTaskDraft(task))
   const isEdit = formData.Id > 0
-
-  useEffect(() => {
-    setFormData(createTaskDraft(task))
-  }, [task])
 
   function handleFieldChange(event: FormFieldChangeEvent) {
     switch (event.dataField) {

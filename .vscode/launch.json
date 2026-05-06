@@ -2,50 +2,27 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "TaskScheduler API (HTTPS)",
+			"name": "API",
 			"type": "dotnet",
 			"request": "launch",
-			"projectPath": "${workspaceFolder}/TaskScheduler.API/TaskScheduler.API.csproj",
-			"launchConfigurationId": "https"
+			"projectPath": "${workspaceFolder}/TaskScheduler.API/TaskScheduler.API.csproj"
 		},
 		{
-			"name": "TaskScheduler Client (HTTPS)",
-			"type": "dotnet",
-			"request": "launch",
-			"projectPath": "${workspaceFolder}/TaskScheduler.Client/TaskScheduler.Client.csproj",
-			"launchConfigurationId": "https"
-		},
-		{
-			"name": "TaskScheduler React (Vite)",
+			"name": "React",
 			"type": "node-terminal",
 			"request": "launch",
 			"command": "npm run dev -- --host 127.0.0.1 --port 5173 --strictPort",
-			"cwd": "${workspaceFolder}/TaskScheduler.React"
+			"cwd": "${workspaceFolder}/TaskScheduler.React",
+			"serverReadyAction": {
+				"action": "openExternally",
+				"pattern": "Local:\\s+(https?://\\S+)"
+			}
 		},
 		{
-			"name": "TaskScheduler React (Browser)",
-			"type": "chrome",
+			"name": "Client",
+			"type": "dotnet",
 			"request": "launch",
-			"url": "http://127.0.0.1:5173",
-			"webRoot": "${workspaceFolder}/TaskScheduler.React"
-		}
-	],
-	"compounds": [
-		{
-			"name": "TaskScheduler API + React",
-			"configurations": [
-				"TaskScheduler API (HTTPS)",
-				"TaskScheduler React (Vite)"
-			],
-			"stopAll": true
-		},
-		{
-			"name": "TaskScheduler Client + React",
-			"configurations": [
-				"TaskScheduler Client (HTTPS)",
-				"TaskScheduler React (Vite)"
-			],
-			"stopAll": true
+			"projectPath": "${workspaceFolder}/TaskScheduler.Client/TaskScheduler.Client.csproj"
 		}
 	]
 }

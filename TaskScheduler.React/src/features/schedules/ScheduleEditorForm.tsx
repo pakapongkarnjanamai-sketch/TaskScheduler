@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import Button from 'devextreme-react/button'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
@@ -48,10 +48,6 @@ export function ScheduleEditorForm({ task, schedule, onCancel, onSaved }: Schedu
   const [formData, setFormData] = useState<Schedule>(() => normalizeSchedule(task.Id, schedule))
   const isEdit = formData.Id > 0
   const rule = getTriggerRule(formData.TriggerType)
-
-  useEffect(() => {
-    setFormData(normalizeSchedule(task.Id, schedule))
-  }, [schedule, task.Id])
 
   function handleFieldChange(event: FormFieldChangeEvent) {
     switch (event.dataField) {
@@ -182,7 +178,7 @@ export function ScheduleEditorForm({ task, schedule, onCancel, onSaved }: Schedu
         </DxForm>
       </div>
 
-      <div className="workspace-note">Time fields use Thailand business time (UTC+7). Enter values as HH:mm or HH:mm:ss.</div>
+      <div className="workspace-meta-line">Thailand business time (UTC+7). Use HH:mm or HH:mm:ss.</div>
     </section>
   )
 }

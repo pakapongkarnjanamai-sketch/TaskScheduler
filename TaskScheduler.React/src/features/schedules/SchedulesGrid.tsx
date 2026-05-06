@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import DataGrid, {
   Column,
   Scrolling,
@@ -9,7 +9,7 @@ import type { DataGridRef } from 'devextreme-react/data-grid'
 import notify from 'devextreme/ui/notify'
 import { createTaskScopedDataSource } from '../../api/dataSources'
 import { deleteEntity } from '../../api/adminApi'
-import { StatusBadge } from '../../components/StatusBadge'
+import { StatusText } from '../../components/StatusText'
 import type { Schedule } from '../../types/entities'
 import { buildScheduleSummary } from './scheduleRules'
 
@@ -21,15 +21,10 @@ type SchedulesGridProps = {
   onChanged: () => void
 }
 
-export function SchedulesGrid({ taskId, refreshKey, onCreate, onEdit, onChanged }: SchedulesGridProps) {
+export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: SchedulesGridProps) {
   const gridRef = useRef<DataGridRef<Schedule, number>>(null)
   const dataSource = useMemo(() => createTaskScopedDataSource('Schedules', taskId), [taskId])
   const [pendingDeleteScheduleId, setPendingDeleteScheduleId] = useState<number | null>(null)
-
-  useEffect(() => {
-    setPendingDeleteScheduleId(null)
-    void gridRef.current?.instance().refresh()
-  }, [refreshKey, taskId])
 
   async function removeSchedule(schedule: Schedule) {
     if (pendingDeleteScheduleId !== schedule.Id) {
@@ -87,21 +82,21 @@ export function SchedulesGrid({ taskId, refreshKey, onCreate, onEdit, onChanged 
             />
           </Toolbar>
 
-          <Column dataField="Name" caption="Schedule" minWidth={180} />
-          <Column dataField="Description" minWidth={180} />
+          <Column dataField="Name" caption="Schedule" minWidth={160} />
+          <Column dataField="Description" minWidth={150} />
           <Column
             dataField="IsActive"
             caption="Enabled"
             dataType="boolean"
             width={100}
-            cellRender={({ value }) => <StatusBadge value={value ? 'Enabled' : 'Disabled'} />}
+            cellRender={({ value }) => <StatusText value={value ? 'Enabled' : 'Disabled'} />}
           />
           <Column dataField="TriggerType" caption="Pattern" width={120} />
-          <Column caption="Recurrence" minWidth={240} calculateCellValue={(schedule: Schedule) => buildScheduleSummary(schedule)} />
-          <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={160} />
+          <Column caption="Recurrence" minWidth={200} calculateCellValue={(schedule: Schedule) => buildScheduleSummary(schedule)} />
+          <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={140} />
           <Column
             caption="Actions"
-            minWidth={240}
+            minWidth={180}
             allowSorting={false}
             allowFiltering={false}
             allowHeaderFiltering={false}

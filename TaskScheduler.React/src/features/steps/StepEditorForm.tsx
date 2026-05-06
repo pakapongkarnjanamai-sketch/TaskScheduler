@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import Button from 'devextreme-react/button'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
@@ -42,11 +42,6 @@ export function StepEditorForm({ task, step, onCancel, onSaved }: StepEditorForm
   const [formData, setFormData] = useState<Step>(() => createStepDraft(task.Id, step))
   const [requestResult, setRequestResult] = useState<StepRequestTestResult | null>(null)
   const isEdit = formData.Id > 0
-
-  useEffect(() => {
-    setFormData(createStepDraft(task.Id, step))
-    setRequestResult(null)
-  }, [step, task.Id])
 
   function handleFieldChange(event: FormFieldChangeEvent) {
     switch (event.dataField) {
@@ -188,8 +183,8 @@ export function StepEditorForm({ task, step, onCancel, onSaved }: StepEditorForm
         </DxForm>
       </div>
 
-      <div className="workspace-note">Built-in echo endpoint: {appConfig.requestTestEchoUrl}?statusCode=200</div>
-      <div className="workspace-note">Run order is managed from the steps list by drag-and-drop.</div>
+      <div className="workspace-meta-line">Echo endpoint: {appConfig.requestTestEchoUrl}?statusCode=200</div>
+      <div className="workspace-meta-line">Run order is managed from the steps list.</div>
 
       <StepRequestTestResultView result={requestResult} onClear={() => setRequestResult(null)} />
     </section>

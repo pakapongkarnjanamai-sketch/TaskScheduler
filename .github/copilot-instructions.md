@@ -79,8 +79,10 @@ Dependency rules:
 
 * Use Vite, React, TypeScript, and DevExtreme React components as the default stack for this frontend.
 * Keep the React app feature-oriented under `src/features`, with shared API/config/types/components separated under `src/api`, `src/config`, `src/types`, and `src/components`.
-* Prefer DevExtreme for dense operational grids, filtering, sorting, master-detail views, remote operations, and popup editing where it stays predictable.
-* Use small custom React components for workflows that are clearer outside DevExtreme's generated form state, especially recurrence-specific schedule editing.
+* Prefer DevExtreme for dense operational grids, filtering, sorting, remote operations, and form composition where it stays predictable.
+* In the current React admin UX, prefer the split task-catalog plus workspace layout with dedicated editor/detail views over nested master-detail or popup-heavy flows unless the user explicitly asks otherwise.
+* Keep list surfaces in focused grid components and move multi-step editing/detail workflows into dedicated feature components when the interaction spans editing, testing, logs, or supporting context.
+* When using `devextreme-react/form` with `editorType` strings, import the matching `devextreme/ui/...` widgets in that module; missing imports can cause runtime `E1035` editor creation failures.
 * Preserve existing admin API compatibility: DevExtreme resources currently use PascalCase entities and form `values` payloads for insert/update.
 * Do not move scheduling, execution, audit, authorization, or persistence decisions into React. The React app may perform UI validation, but backend services remain authoritative.
 * Avoid animations, decorative UI effects, heavy custom state frameworks, and broad CSS churn. Keep layouts operational, readable, and stable.
@@ -123,9 +125,11 @@ Implementation notes:
 * Scheduler recurrence currently supports `Interval`, `Daily`, `Weekly`, and `Monthly`.
 * Schedule timing is treated as Thailand business time (`UTC+7`), and timezone-aware schedule payloads are normalized before extracting `TimeOfDay`.
 * The main scheduler admin UX uses popup/form editing surfaced from `TaskScheduler.Client/Views/Home/Index.cshtml`, while the schedule grid/editor behavior lives in `TaskScheduler.Client/wwwroot/js/schedule-grid-editor.js` and shared recurrence helpers live in `TaskScheduler.Client/wwwroot/js/scheduler-editor.js`.
-* TaskScheduler.React is a parallel React admin frontend. It uses DevExtreme React for task, step, schedule, and log grids; a custom React schedule editor for recurrence-specific fields; and SignalR updates through `@microsoft/signalr`.
+* TaskScheduler.React now uses a split workspace layout: the task catalog stays in `TaskScheduler.React/src/features/tasks/TaskSchedulerDashboard.tsx`, and the active task opens into dedicated workspace views for overview, task editing, steps, schedules, execution history, and step logs.
+* React editing surfaces now live in dedicated feature components: `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx` handle editing; `ExecutionHistoryView.tsx` and `StepLogsView.tsx` handle log browsing; `StepRequestTestResultView.tsx` renders request-test results inline inside the step workspace.
+* The React frontend still uses SignalR updates through `@microsoft/signalr`, and the dashboard header surfaces the current connection state (`Connected`, `Reconnecting`, `Disconnected`).
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
-* The weekly `DaysOfWeek` editor in the popup must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
+* The weekly `DaysOfWeek` editor in React must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
 
 ## 4. Required AI Persona & Execution Rules
 
@@ -221,9 +225,10 @@ When generating or editing client-side UI:
 * **React consistency:** In TaskScheduler.React, reuse the feature folder structure and shared helpers before creating one-off component patterns.
 * **Accessibility:** Maintain semantic HTML, keyboard-friendly interactions, and reasonable accessibility baselines.
 * **Separation of concerns:** UI handles rendering and interaction only. Business rules, validation rules, and persistence decisions belong outside the view layer.
-* **Current scheduler UX:** The schedules surface now uses a summary grid plus popup/form editing; show recurrence-specific fields only when they apply to the selected trigger type.
+* **Current scheduler UX:** The MVC client still uses summary grids plus popup/form editing, while TaskScheduler.React uses summary lists plus dedicated workspace forms; in both clients, show recurrence-specific fields only when they apply to the selected trigger type.
 * **Scheduler client structure:** Keep generic recurrence helpers in `scheduler-editor.js` and keep the schedules grid/popup wiring in `schedule-grid-editor.js` rather than rebuilding that logic inline in Razor.
-* **React scheduler structure:** Keep React recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`, grid wiring in `SchedulesGrid.tsx`, and schedule form behavior in `ScheduleEditorDialog.tsx`.
+* **React workspace structure:** Keep React workspace orchestration in `TaskScheduler.React/src/features/tasks/TaskSchedulerDashboard.tsx`; keep recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`; keep list surfaces in `StepsGrid.tsx` and `SchedulesGrid.tsx`; keep dedicated forms in `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx`; keep log views in `ExecutionHistoryView.tsx` and `StepLogsView.tsx`.
+* **React request-test structure:** Keep request-test results in `TaskScheduler.React/src/features/requestTests/StepRequestTestResultView.tsx` as part of the step workspace rather than reintroducing popup dialog flows unless explicitly requested.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
 
 ## 9. Coding Standards & Implementation Conventions

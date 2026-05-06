@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import DataGrid, {
   Column,
@@ -12,7 +12,7 @@ import type { DataGridRef } from 'devextreme-react/data-grid'
 import notify from 'devextreme/ui/notify'
 import { createAdminStore, deleteEntity } from '../../api/adminApi'
 import { createTaskScopedDataSource } from '../../api/dataSources'
-import { StatusBadge } from '../../components/StatusBadge'
+import { StatusText } from '../../components/StatusText'
 import type { Step } from '../../types/entities'
 
 type StepsGridProps = {
@@ -24,16 +24,11 @@ type StepsGridProps = {
 
 type StepReorderEvent = Parameters<NonNullable<ComponentProps<typeof RowDragging>['onReorder']>>[0]
 
-export function StepsGrid({ taskId, refreshKey, onCreate, onEdit }: StepsGridProps) {
+export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
   const gridRef = useRef<DataGridRef<Step, number>>(null)
   const store = useMemo(() => createAdminStore('Steps'), [])
   const dataSource = useMemo(() => createTaskScopedDataSource('Steps', taskId, 'Order'), [taskId])
   const [pendingDeleteStepId, setPendingDeleteStepId] = useState<number | null>(null)
-
-  useEffect(() => {
-    setPendingDeleteStepId(null)
-    void gridRef.current?.instance().refresh()
-  }, [refreshKey, taskId])
 
   async function handleReorder(event: StepReorderEvent) {
     if (event.fromIndex === event.toIndex) {
@@ -123,15 +118,15 @@ export function StepsGrid({ taskId, refreshKey, onCreate, onEdit }: StepsGridPro
             caption="Enabled"
             dataType="boolean"
             width={100}
-            cellRender={({ value }) => <StatusBadge value={value ? 'Enabled' : 'Disabled'} />}
+            cellRender={({ value }) => <StatusText value={value ? 'Enabled' : 'Disabled'} />}
           />
-          <Column dataField="Name" caption="Step Name" minWidth={180} />
-          <Column dataField="Description" minWidth={180} />
+          <Column dataField="Name" caption="Step Name" minWidth={160} />
+          <Column dataField="Description" minWidth={150} />
           <Column dataField="HttpMethod" caption="Method" width={110} />
-          <Column dataField="ApiUrl" caption="URL" minWidth={300} />
+          <Column dataField="ApiUrl" caption="URL" minWidth={220} />
           <Column
             caption="Actions"
-            minWidth={240}
+            minWidth={200}
             allowSorting={false}
             allowFiltering={false}
             allowHeaderFiltering={false}
@@ -197,7 +192,6 @@ export function StepsGrid({ taskId, refreshKey, onCreate, onEdit }: StepsGridPro
         </DataGrid>
       </div>
 
-      <div className="workspace-note">Open a step to edit headers, body, and run request tests.</div>
     </section>
   )
 }

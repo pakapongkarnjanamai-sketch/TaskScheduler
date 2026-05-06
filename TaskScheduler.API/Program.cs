@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.EntityFrameworkCore;
 using TaskScheduler.API.Services; 
@@ -41,13 +42,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-            "https://localhost:7259",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        policy.SetIsOriginAllowed(origin => IsAllowedClientOrigin(origin, builder.Environment.IsDevelopment()))
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = null);
@@ -68,3 +66,30 @@ app.UseAuthorization();
 app.MapControllers().RequireCors("AllowAll").RequireAuthorization();
 app.MapHub<TaskHub>("/taskHub").RequireCors("AllowAll").RequireAuthorization();
 app.Run();
+
+static bool IsAllowedClientOrigin(string origin, bool allowLoopbackDevOrigins)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+    {
+        return false;
+    }
+
+    if (string.Equals(origin, "https://localhost:7259", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (!allowLoopbackDevOrigins)
+    {
+        return false;
+    }
+
+    if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+        && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    return string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+        || (IPAddress.TryParse(uri.Host, out var address) && IPAddress.IsLoopback(address));
+}

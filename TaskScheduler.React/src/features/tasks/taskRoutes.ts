@@ -1,0 +1,15 @@
+export const taskPaths = {
+  catalog: '/tasks',
+  newTask: '/tasks/new',
+  task: (taskId: number | string) => `/tasks/${taskId}`,
+  overview: (taskId: number | string) => `/tasks/${taskId}/overview`,
+  edit: (taskId: number | string) => `/tasks/${taskId}/edit`,
+  steps: (taskId: number | string) => `/tasks/${taskId}/steps`,
+  newStep: (taskId: number | string) => `/tasks/${taskId}/steps/new`,
+  editStep: (taskId: number | string, stepId: number | string) => `/tasks/${taskId}/steps/${stepId}/edit`,
+  schedules: (taskId: number | string) => `/tasks/${taskId}/schedules`,
+  newSchedule: (taskId: number | string) => `/tasks/${taskId}/schedules/new`,
+  editSchedule: (taskId: number | string, scheduleId: number | string) => `/tasks/${taskId}/schedules/${scheduleId}/edit`,
+  history: (taskId: number | string) => `/tasks/${taskId}/history`,
+  stepLogs: (taskId: number | string) => `/tasks/${taskId}/step-logs`,
+}

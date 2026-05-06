@@ -1,4 +1,5 @@
 import { createStore } from 'devextreme-aspnet-data-nojquery'
+import DataSource from 'devextreme/data/data_source'
 import notify from 'devextreme/ui/notify'
 import { appConfig } from '../config/appConfig'
 import type { ApiResponse, StepRequestTestRequest, StepRequestTestResult } from '../types/entities'
@@ -9,6 +10,11 @@ export type AdminResource =
   | 'Schedules'
   | 'TaskExecutionLogs'
   | 'StepExecutionLogs'
+
+type LoadOptions = {
+  filter?: unknown
+  sort?: Array<{ selector: string; desc: boolean }>
+}
 
 type AjaxSettings = {
   xhrFields?: { withCredentials?: boolean }
@@ -74,6 +80,43 @@ export function createAdminStore(resource: AdminResource) {
       notify(error.message, 'error', 3500)
     },
   })
+}
+
+function toEntityArray<T>(result: unknown) {
+  if (Array.isArray(result)) {
+    return result as T[]
+  }
+
+  if (result && typeof result === 'object' && 'data' in result) {
+    const data = (result as { data?: unknown }).data
+    if (Array.isArray(data)) {
+      return data as T[]
+    }
+  }
+
+  return [] as T[]
+}
+
+export async function loadEntities<T>(resource: AdminResource, options?: LoadOptions) {
+  const dataSource = new DataSource({
+    store: createAdminStore(resource),
+    filter: options?.filter,
+    sort: options?.sort,
+    paginate: false,
+  })
+
+  try {
+    return toEntityArray<T>(await dataSource.load())
+  } finally {
+    dataSource.dispose()
+  }
+}
+
+export async function loadEntityById<T>(resource: AdminResource, key: number, additionalFilter?: unknown) {
+  const idFilter = ['Id', '=', key]
+  const filter = additionalFilter ? [idFilter, 'and', additionalFilter] : idFilter
+  const entities = await loadEntities<T>(resource, { filter })
+  return entities[0] ?? null
 }
 
 export function createEntity(resource: AdminResource, values: Record<string, unknown>) {

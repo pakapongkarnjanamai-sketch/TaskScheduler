@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-06T03:15:00Z",
+  "title": "Design System: TaskScheduler React",
+  "extensions": {
+    "aesthetic": {
+      "northStar": "Modern Sharp Minimal Operations",
+      "summary": "A flat, grid-precise, text-led internal operations interface with generous white space, small typography, sharp geometry, and no decorative UI noise."
+    },
+    "colorMeta": {
+      "paper-field": {
+        "role": "neutral",
+        "displayName": "Paper Field",
+        "canonical": "oklch(97.6% 0.004 225)",
+        "usage": "Page background and outer workspace field."
+      },
+      "panel-plane": {
+        "role": "neutral",
+        "displayName": "Panel Plane",
+        "canonical": "oklch(99% 0.002 225)",
+        "usage": "Panels, forms, tables, and control surfaces."
+      },
+      "grid-line": {
+        "role": "neutral",
+        "displayName": "Grid Line",
+        "canonical": "oklch(87.8% 0.006 225)",
+        "usage": "Default 1px separators and borders."
+      },
+      "grid-line-strong": {
+        "role": "neutral",
+        "displayName": "Grid Line Strong",
+        "canonical": "oklch(78.6% 0.008 225)",
+        "usage": "Focused boundaries and major dividers."
+      },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Ink Strong",
+        "canonical": "oklch(24.8% 0.014 232)",
+        "usage": "Primary content and selected values."
+      },
+      "ink-base": {
+        "role": "neutral",
+        "displayName": "Ink Base",
+        "canonical": "oklch(34.6% 0.014 232)",
+        "usage": "Standard UI text."
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "oklch(55.2% 0.012 232)",
+        "usage": "Secondary metadata and helper labels."
+      },
+      "command-blue": {
+        "role": "primary",
+        "displayName": "Command Blue",
+        "canonical": "oklch(42.6% 0.075 220)",
+        "usage": "Primary commands, selected navigation, links, and focus outlines."
+      },
+      "confirm-green": {
+        "role": "secondary",
+        "displayName": "Confirm Green",
+        "canonical": "oklch(42.5% 0.075 154)",
+        "usage": "Success or enabled status text only."
+      },
+      "fault-red": {
+        "role": "tertiary",
+        "displayName": "Fault Red",
+        "canonical": "oklch(46.8% 0.105 28)",
+        "usage": "Failure, destructive, disabled, or disconnected status text only."
+      }
+    },
+    "typographyMeta": {
+      "ui": {
+        "displayName": "UI",
+        "purpose": "All normal interface text, rows, forms, and navigation."
+      },
+      "strong": {
+        "displayName": "Strong",
+        "purpose": "Page titles, section names, selected items, and primary values."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, compact metadata, and field captions."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Logs, payloads, URLs, headers, and machine-shaped values."
+      }
+    },
+    "grid": {
+      "baseUnit": "8px",
+      "controlHeight": "32px",
+      "primaryGap": "16px",
+      "groupSpacing": "24px",
+      "sectionSpacing": "32px",
+      "pagePaddingDesktop": "40px"
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "workspace-stack",
+        "value": "1260px"
+      },
+      {
+        "name": "header-stack",
+        "value": "960px"
+      },
+      {
+        "name": "compact-page-padding",
+        "value": "720px"
+      }
+    ],
+    "iconPolicy": {
+      "allowed": [
+        "square",
+        "bracket",
+        "grid",
+        "chevron",
+        "slash",
+        "corner",
+        "line"
+      ],
+      "forbidden": [
+        "soft circle",
+        "bubbly pictogram",
+        "cute metaphor",
+        "decorative heading icon",
+        "highly curved icon"
+      ]
+    },
+    "hardBans": [
+      "hero sections",
+      "note blocks",
+      "badges",
+      "chips",
+      "dots",
+      "counters",
+      "attention markers",
+      "shadows",
+      "glow",
+      "blur",
+      "glass effects",
+      "hover animation",
+      "animated transitions",
+      "decorative gradients",
+      "large border radius",
+      "pill buttons",
+      "pill navigation",
+      "unnecessary text",
+      "rounded decorative icons"
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Small rectangular command button for the main action in a focused area.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { height: 32px; padding: 0 12px; border: 1px solid var(--command-blue); border-radius: 2px; background: var(--command-blue); color: var(--panel-plane); font: 650 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--command-blue) 88%, var(--ink-strong)); } .ds-btn-primary:focus-visible { outline: 1px solid var(--command-blue); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Flat rectangular secondary command with the same geometry as primary.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { height: 32px; padding: 0 12px; border: 1px solid var(--grid-line); border-radius: 2px; background: var(--panel-plane); color: var(--ink-base); font: 600 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-btn-secondary:hover { border-color: var(--grid-line-strong); color: var(--ink-strong); } .ds-btn-secondary:focus-visible { outline: 1px solid var(--command-blue); outline-offset: 2px; }"
+    },
+    {
+      "name": "Navigation Link",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Slim geometric navigation item with text-led selected state.",
+      "html": "<a class=\"ds-nav-link ds-nav-link--active\" href=\"#\">Schedules</a>",
+      "css": ".ds-nav-link { display: flex; align-items: center; height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: 2px; color: var(--ink-base); font: 600 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; text-decoration: none; } .ds-nav-link:hover { border-color: var(--grid-line); color: var(--ink-strong); } .ds-nav-link--active { border-color: var(--grid-line-strong); color: var(--command-blue); } .ds-nav-link:focus-visible { outline: 1px solid var(--command-blue); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Text",
+      "kind": "text",
+      "refersTo": "status-text-success",
+      "description": "Inline semantic status. Use this instead of badges, chips, dots, or markers.",
+      "html": "<span class=\"ds-status-text ds-status-text--success\">Connected</span>",
+      "css": ".ds-status-text { color: var(--ink-muted); font: 600 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-status-text--success { color: var(--confirm-green); font-weight: 650; } .ds-status-text--danger { color: var(--fault-red); font-weight: 650; }"
+    },
+    {
+      "name": "Panel Plane",
+      "kind": "container",
+      "refersTo": "panel-shell",
+      "description": "Flat working panel aligned to the 8px grid.",
+      "html": "<section class=\"ds-panel\"><h2>Task Details</h2><p>Name</p></section>",
+      "css": ".ds-panel { padding: 24px; border: 1px solid var(--grid-line); border-radius: 4px; background: var(--panel-plane); color: var(--ink-base); font: 400 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-panel h2 { margin: 0 0 16px; color: var(--ink-strong); font: 650 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-panel p { margin: 0; }"
+    },
+    {
+      "name": "Operational Field",
+      "kind": "input",
+      "refersTo": "button-secondary",
+      "description": "Compact field geometry for forms and filters.",
+      "html": "<label class=\"ds-field\"><span>Task Name</span><input /></label>",
+      "css": ".ds-field { display: grid; gap: 8px; color: var(--ink-base); font: 600 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-field input { height: 32px; padding: 0 8px; border: 1px solid var(--grid-line); border-radius: 2px; background: var(--panel-plane); color: var(--ink-strong); font: 400 13px/1.5 \"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif; } .ds-field input:focus-visible { outline: 1px solid var(--command-blue); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Modern Sharp Minimal Operations",
+    "overview": "TaskScheduler React is a sharp minimalist control surface for internal operators. The interface should feel precise, expensive, and professional because every element is aligned, necessary, and quiet. Shape, spacing, and grid discipline are the design language. Decoration is not.",
+    "keyCharacteristics": [
+      "Strict 8px grid alignment.",
+      "13px typography everywhere.",
+      "Flat surfaces with no shadow or gradient.",
+      "Small rectangular controls with 2px radius.",
+      "Text-led status instead of badges or markers.",
+      "Geometric icons only when necessary."
+    ],
+    "rules": [
+      {
+        "name": "The Strict Grid Rule",
+        "body": "All layout, control height, gaps, and panel padding must resolve to the 8px grid.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Size Rule",
+        "body": "All UI text stays at 13px. Hierarchy comes from weight, spacing, alignment, and structure.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Decoration Rule",
+        "body": "No hero sections, note blocks, badges, shadows, hover animation, gradients, or decorative icons.",
+        "section": "components"
+      },
+      {
+        "name": "The Sharp Geometry Rule",
+        "body": "Controls use 2px radius, panels use 4px maximum, and tables may use 0px radius.",
+        "section": "components"
+      },
+      {
+        "name": "The Necessary Text Rule",
+        "body": "Every word must support operation, recognition, or error prevention.",
+        "section": "copy"
+      }
+    ],
+    "dos": [
+      "Use an 8px grid and equal sibling gaps.",
+      "Keep all typography at 13px.",
+      "Use generous white space around flat panels.",
+      "Use 1px separators and neutral planes.",
+      "Use geometric icons only when they improve recognition."
+    ],
+    "donts": [
+      "Do not create hero sections.",
+      "Do not create note blocks or filler panels.",
+      "Do not use badges, chips, dots, counters, or attention markers.",
+      "Do not use shadows, glow, blur, glass effects, or gradients.",
+      "Do not use hover animation, movement, scaling, fading, or animated transitions.",
+      "Do not use large radius, pill buttons, pill navigation, or soft cards.",
+      "Do not use icons with rounded, cute, soft, or highly curved shapes."
+    ]
+  }
+}
