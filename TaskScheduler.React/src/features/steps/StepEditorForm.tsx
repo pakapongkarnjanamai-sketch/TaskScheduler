@@ -1,5 +1,4 @@
-import { useState, type ComponentProps } from 'react'
-import Button from 'devextreme-react/button'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
 import 'devextreme/ui/text_box'
@@ -8,13 +7,13 @@ import 'devextreme/ui/select_box'
 import 'devextreme/ui/number_box'
 import 'devextreme/ui/switch'
 import { createEntity, runStepRequestTest, updateEntity } from '../../api/adminApi'
-import { appConfig } from '../../config/appConfig'
 import { StepRequestTestResultView } from '../requestTests/StepRequestTestResultView'
 import type { Step, StepRequestTestResult, TaskSummary } from '../../types/entities'
 
 type StepEditorFormProps = {
   task: TaskSummary
   step: Step | null
+  breadcrumb?: ReactNode
   onCancel: () => void
   onSaved: (step: Step) => void
 }
@@ -38,7 +37,7 @@ function createStepDraft(taskId: number, step: Step | null): Step {
   }
 }
 
-export function StepEditorForm({ task, step, onCancel, onSaved }: StepEditorFormProps) {
+export function StepEditorForm({ task, step, breadcrumb, onSaved }: StepEditorFormProps) {
   const [formData, setFormData] = useState<Step>(() => createStepDraft(task.Id, step))
   const [requestResult, setRequestResult] = useState<StepRequestTestResult | null>(null)
   const isEdit = formData.Id > 0
@@ -134,15 +133,15 @@ export function StepEditorForm({ task, step, onCancel, onSaved }: StepEditorForm
 
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header">
-        <div>
-          <p className="workspace-view__eyebrow">Step Editor</p>
-          <h2>{isEdit ? `Edit ${formData.Name || 'Step'}` : `Add Step to ${task.Name}`}</h2>
-        </div>
+      <div className="workspace-view__header workspace-view__header--actions-only">
+        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions workspace-view__actions--spread">
-          <Button text="Back" stylingMode="outlined" onClick={onCancel} />
-          <Button text="Test Request" stylingMode="outlined" onClick={testRequest} />
-          <Button text="Save Step" type="default" onClick={saveStep} />
+          <button type="button" className="row-action" onClick={() => void testRequest()}>
+            Test Request
+          </button>
+          <button type="button" className="row-action row-action--primary" onClick={() => void saveStep()}>
+            Save Step
+          </button>
         </div>
       </div>
 
@@ -182,9 +181,6 @@ export function StepEditorForm({ task, step, onCancel, onSaved }: StepEditorForm
           </GroupItem>
         </DxForm>
       </div>
-
-      <div className="workspace-meta-line">Echo endpoint: {appConfig.requestTestEchoUrl}?statusCode=200</div>
-      <div className="workspace-meta-line">Run order is managed from the steps list.</div>
 
       <StepRequestTestResultView result={requestResult} onClear={() => setRequestResult(null)} />
     </section>

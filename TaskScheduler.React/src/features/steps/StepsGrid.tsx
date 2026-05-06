@@ -1,30 +1,31 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ComponentProps } from 'react'
 import DataGrid, {
   Column,
+  ColumnFixing,
   RowDragging,
   Scrolling,
   Sorting,
-  Toolbar,
-  Item as ToolbarItem,
 } from 'devextreme-react/data-grid'
 import type { DataGridRef } from 'devextreme-react/data-grid'
 import notify from 'devextreme/ui/notify'
 import { createAdminStore, deleteEntity } from '../../api/adminApi'
 import { createTaskScopedDataSource } from '../../api/dataSources'
+import { fixedActionColumnProps, standardVirtualScrollingProps, workspaceDataGridProps } from '../../components/grid/dataGridConfig'
 import { StatusText } from '../../components/StatusText'
 import type { Step } from '../../types/entities'
 
 type StepsGridProps = {
   taskId: number
   refreshKey: number
+  breadcrumb?: ReactNode
   onCreate: () => void
   onEdit: (step: Step) => void
 }
 
 type StepReorderEvent = Parameters<NonNullable<ComponentProps<typeof RowDragging>['onReorder']>>[0]
 
-export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
+export function StepsGrid({ taskId, breadcrumb, onCreate, onEdit }: StepsGridProps) {
   const gridRef = useRef<DataGridRef<Step, number>>(null)
   const store = useMemo(() => createAdminStore('Steps'), [])
   const dataSource = useMemo(() => createTaskScopedDataSource('Steps', taskId, 'Order'), [taskId])
@@ -70,18 +71,10 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
     }
   }
 
-  function refreshGrid() {
-    setPendingDeleteStepId(null)
-    void gridRef.current?.instance().refresh()
-  }
-
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header">
-        <div>
-          <p className="workspace-view__eyebrow">Steps</p>
-          <h2>Execution Flow</h2>
-        </div>
+      <div className="workspace-view__header workspace-view__header--actions-only">
+        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions">
           <button type="button" className="row-action row-action--primary" onClick={onCreate}>
             Add Step
@@ -93,24 +86,14 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
         <DataGrid
           ref={gridRef}
           dataSource={dataSource}
-          showBorders
-          rowAlternationEnabled
-          columnAutoWidth
-          hoverStateEnabled
-          height={520}
+          {...workspaceDataGridProps}
           remoteOperations
           noDataText="No steps configured yet."
         >
           <Sorting mode="none" />
-          <Scrolling mode="virtual" />
+          <ColumnFixing enabled={true} />
+          <Scrolling {...standardVirtualScrollingProps} />
           <RowDragging allowReordering showDragIcons dropFeedbackMode="push" onReorder={handleReorder} />
-          <Toolbar>
-            <ToolbarItem
-              location="after"
-              widget="dxButton"
-              options={{ icon: 'refresh', hint: 'Refresh steps', onClick: refreshGrid }}
-            />
-          </Toolbar>
 
           <Column dataField="Order" caption="Run Order" dataType="number" width={90} allowEditing={false} />
           <Column
@@ -125,17 +108,13 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
           <Column dataField="HttpMethod" caption="Method" width={110} />
           <Column dataField="ApiUrl" caption="URL" minWidth={220} />
           <Column
-            caption="Actions"
-            minWidth={200}
-            allowSorting={false}
-            allowFiltering={false}
-            allowHeaderFiltering={false}
+            {...fixedActionColumnProps}
             cellRender={(cell) => {
               const step = cell.data as Step
               const isDeletePending = pendingDeleteStepId === step.Id
 
               return (
-                <div className="row-action-stack">
+                <div className="row-action-stack row-action-stack--right">
                   <div className="row-action-group">
                     <button
                       type="button"
@@ -169,7 +148,7 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
                             void handleDelete(step)
                           }}
                         >
-                          Confirm delete
+                          Confirm Delete
                         </button>
                         <button
                           type="button"
@@ -184,14 +163,12 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
                       </>
                     )}
                   </div>
-                  {isDeletePending && <div className="inline-warning">Deleting a step reorders the remaining sequence.</div>}
                 </div>
               )
             }}
           />
         </DataGrid>
       </div>
-
     </section>
   )
 }

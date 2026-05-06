@@ -11,7 +11,6 @@ export function TaskAppShell() {
       <header className="app-header">
         <div className="app-title-block">
           <span className="app-title">TaskScheduler</span>
-          <span className="app-subtitle">React Operations</span>
         </div>
         <dl className="app-meta">
           <div className="app-meta__item">

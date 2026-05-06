@@ -130,6 +130,8 @@ Implementation notes:
 * The React frontend still uses SignalR updates through `@microsoft/signalr`, and the dashboard header surfaces the current connection state (`Connected`, `Reconnecting`, `Disconnected`).
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
 * The weekly `DaysOfWeek` editor in React must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
+* React DataGrid horizontal scrolling should be consistent between catalog and workspace pages; keep scrollbar ownership in DevExtreme scrollable internals and avoid reintroducing container-level native horizontal scrolling for workspace grid cards.
+* React workspace Actions columns should remain fixed-right, compact, and center-aligned (header and row content). Prefer shared column/scroller settings from `TaskScheduler.React/src/components/grid/dataGridConfig.ts` to avoid per-page drift.
 
 ## 4. Required AI Persona & Execution Rules
 
@@ -230,6 +232,7 @@ When generating or editing client-side UI:
 * **React workspace structure:** Keep React workspace orchestration in `TaskScheduler.React/src/features/tasks/TaskSchedulerDashboard.tsx`; keep recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`; keep list surfaces in `StepsGrid.tsx` and `SchedulesGrid.tsx`; keep dedicated forms in `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx`; keep log views in `ExecutionHistoryView.tsx` and `StepLogsView.tsx`.
 * **React request-test structure:** Keep request-test results in `TaskScheduler.React/src/features/requestTests/StepRequestTestResultView.tsx` as part of the step workspace rather than reintroducing popup dialog flows unless explicitly requested.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
+* **React DataGrid shared config:** Keep shared DataGrid conventions (for example scrolling mode and fixed Actions column alignment/width) centralized in `TaskScheduler.React/src/components/grid/dataGridConfig.ts` instead of duplicating option objects in individual grid components.
 
 ## 9. Coding Standards & Implementation Conventions
 

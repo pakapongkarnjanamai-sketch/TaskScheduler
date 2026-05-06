@@ -39,10 +39,13 @@ npm run lint
 
 The default local setup calls the API host directly so Windows/Negotiate authentication can complete against the API origin:
 
+- `VITE_TASKSCHEDULER_APP_BASE_PATH=/`
 - `VITE_TASKSCHEDULER_API_BASE_URL=https://localhost:7253/api/`
 - `VITE_TASKSCHEDULER_HUB_URL=https://localhost:7253/taskHub`
 
 Keep `TaskScheduler.API` running on that URL, or override the environment values for a different host. `vite.config.ts` still includes `/api` and `/taskHub` proxy routes for non-authenticated local experiments, but the direct API URL is the safer default while Windows Authentication is enabled.
+
+When deploying the React app beneath an IIS subfolder, set `VITE_TASKSCHEDULER_APP_BASE_PATH` to that virtual path, for example `/Tools/TaskScheduler/React/`, so both router navigation and built asset URLs stay aligned.
 
 In Development, the API now accepts loopback `http/https` origins, so local Vite ports such as `localhost:5173`, `localhost:4174`, or `127.0.0.1:4173` can call the real API and SignalR hub directly without switching to the proxy path.
 

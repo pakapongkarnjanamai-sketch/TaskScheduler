@@ -16,10 +16,16 @@
   --block: 24px;
   --section: 32px;
   --page: 40px;
+  --touch-control-height: 44px;
+  --action-gap: 8px;
+  --action-gap-grid: 6px;
 }
 
 .app-shell {
-  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  overflow: hidden;
   background: var(--paper-field);
   color: var(--ink-base);
 }
@@ -96,7 +102,13 @@
 }
 
 .app-shell__body {
+  overflow-y: auto;
   padding: var(--section) var(--page) var(--page);
+}
+
+.app-shell__body:has(.workspace-shell) {
+  padding: 0;
+  overflow: hidden;
 }
 
 .catalog-page,
@@ -120,17 +132,31 @@
 .catalog-page,
 .shell-page,
 .workspace-view,
-.workspace-content,
 .workspace-state {
   gap: var(--gap);
 }
 
+.catalog-page {
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.catalog-panel {
+  min-height: 0;
+}
+
 .workspace-card,
-.workspace-rail,
 .workspace-state,
 .catalog-panel {
   border: 1px solid var(--grid-line);
   border-radius: var(--radius-panel);
+  background: var(--panel-plane);
+}
+
+.workspace-rail {
+  border-right: 1px solid var(--grid-line);
+  border-radius: 0;
   background: var(--panel-plane);
 }
 
@@ -154,7 +180,7 @@
 
 .page-toolbar {
   padding-bottom: var(--gap);
-  border-bottom: 1px solid var(--grid-line);
+
 }
 
 .workspace-view__header,
@@ -172,13 +198,55 @@
 }
 
 .workspace-view__description,
-.workspace-state p,
-.workspace-meta-line,
-.inline-warning {
+.workspace-state p {
   margin: 8px 0 0;
   color: var(--ink-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.workspace-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.workspace-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.workspace-breadcrumb__link {
+  color: var(--command-blue);
+  text-decoration: none;
+}
+
+.workspace-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.workspace-breadcrumb__separator {
+  color: var(--ink-muted);
+  margin: 0 6px;
+}
+
+.workspace-view__header--actions-only {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.workspace-view__header--actions-only .workspace-view__actions {
+  margin-left: auto;
 }
 
 .shell-page--narrow {
@@ -186,16 +254,18 @@
 }
 
 .workspace-shell {
-  grid-template-columns: 280px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--block);
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .workspace-rail {
-  position: sticky;
-  top: var(--block);
+  overflow-y: auto;
   gap: var(--gap);
-  padding: var(--block);
+  padding: var(--block) var(--gap);
+  align-content: start;
 }
 
 .workspace-rail__header {
@@ -240,6 +310,36 @@
   gap: 8px;
 }
 
+.row-action-stack--right {
+  width: 100%;
+  justify-items: center;
+}
+
+.row-action-stack--right .row-action-group {
+  justify-content: center;
+}
+
+.workspace-rail__nav,
+.workspace-rail__actions {
+  align-content: start;
+}
+
+.workspace-content {
+  overflow-y: auto;
+  padding: var(--section) var(--page) var(--page);
+  align-items: start;
+  align-content: start;
+  min-width: 0;
+}
+
+.workspace-rail-toggle {
+  display: none;
+}
+
+.workspace-view {
+  min-width: 0;
+}
+
 .workspace-rail__link {
   display: flex;
   align-items: center;
@@ -259,6 +359,16 @@
   color: var(--ink-strong);
 }
 
+.workspace-rail__link:focus-visible,
+.row-action:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible,
+.dx-texteditor-input:focus-visible,
+.dx-dropdowneditor-button:focus-visible {
+  outline: 1px solid var(--command-blue);
+  outline-offset: 2px;
+}
+
 .workspace-rail__link--active {
   border-color: var(--grid-line-strong);
   color: var(--command-blue);
@@ -272,7 +382,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--action-gap);
 }
 
 .workspace-view__actions--spread {
@@ -322,6 +432,26 @@
   padding: 0 12px;
   text-decoration: none;
   white-space: nowrap;
+}
+
+/* Keep table action controls tighter so they align with grid cell rhythm. */
+.dx-datagrid .row-action-stack {
+  gap: var(--action-gap-grid);
+}
+
+.dx-datagrid .row-action-group {
+  gap: var(--action-gap-grid);
+  flex-wrap: nowrap;
+}
+
+.dx-datagrid .row-action {
+  min-height: 28px;
+  padding: 0 10px;
+}
+
+.dx-datagrid-headers .actions-column .dx-datagrid-text-content {
+  display: block;
+  text-align: center;
 }
 
 .row-action:hover {
@@ -400,12 +530,26 @@
 }
 
 .workspace-card--flush {
+  display: block;
   padding: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .workspace-card--flush .dx-datagrid,
 .catalog-panel .dx-datagrid {
   border: 0;
+  max-width: 100%;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.workspace-card--flush .dx-datagrid-headers,
+.workspace-card--flush .dx-datagrid-rowsview,
+.catalog-panel .dx-datagrid-headers,
+.catalog-panel .dx-datagrid-rowsview {
+  max-width: 100%;
 }
 
 .dx-widget,
@@ -435,6 +579,24 @@
   min-height: var(--control-height);
 }
 
+.dx-button-content {
+  min-height: calc(var(--control-height) - 2px);
+  display: flex;
+  align-items: center;
+}
+
+.dx-texteditor,
+.dx-dropdowneditor,
+.dx-selectbox,
+.dx-numberbox,
+.dx-tagbox {
+  min-height: var(--control-height);
+}
+
+.dx-texteditor-input {
+  min-height: calc(var(--control-height) - 2px);
+}
+
 .dx-datagrid-headers {
   color: var(--ink-strong);
 }
@@ -443,21 +605,93 @@
   background: var(--paper-field);
 }
 
+.dx-datagrid-rowsview .dx-row > td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .dx-datagrid-rowsview .dx-row:hover > td {
   background: var(--paper-field);
 }
 
-@media (max-width: 1260px) {
-  .workspace-shell {
-    grid-template-columns: 1fr;
-  }
+/* Tighten header-filter and filter-row glyphs */
+.dx-header-filter {
+  font-size: 11px;
+  opacity: 0.4;
+  color: var(--ink-muted);
+  transition: none;
+}
 
-  .workspace-rail {
-    position: static;
-  }
+.dx-header-filter:hover {
+  opacity: 0.8;
+}
+
+.dx-header-filter-empty {
+  opacity: 0.25;
+}
+
+.dx-datagrid-filter-row .dx-dropdowneditor-button {
+  width: 20px;
+  min-width: 20px;
+}
+
+.dx-datagrid-filter-row .dx-dropdowneditor-icon {
+  font-size: 11px;
+  opacity: 0.45;
+  color: var(--ink-muted);
+}
+
+.dx-datagrid-filter-row .dx-dropdowneditor-icon:hover {
+  opacity: 0.85;
+}
+
+.dx-datagrid-search-panel .dx-icon-search {
+  font-size: 13px;
+  opacity: 0.5;
+  color: var(--ink-muted);
 }
 
 @media (max-width: 960px) {
+  .app-shell__body:has(.workspace-shell) {
+    overflow-y: auto;
+  }
+
+  .workspace-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .workspace-rail {
+    overflow-y: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--grid-line);
+  }
+
+  .workspace-content {
+    overflow-y: visible;
+  }
+
+  .workspace-rail-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--control-height);
+    margin-bottom: var(--gap);
+    border: 1px solid var(--grid-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--panel-plane);
+    color: var(--ink-base);
+    font: 600 13px/1.5 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 0 12px;
+  }
+
+  .workspace-shell--rail-collapsed .workspace-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
   .app-header,
   .page-toolbar,
   .workspace-view__header,
@@ -506,5 +740,30 @@
   .workspace-rail__link,
   .row-action {
     width: 100%;
+  }
+
+  .dx-datagrid .row-action,
+  .dx-datagrid .row-action-group {
+    width: auto;
+  }
+
+  .workspace-rail__link,
+  .row-action,
+  .dx-button,
+  .dx-texteditor,
+  .dx-dropdowneditor,
+  .dx-selectbox,
+  .dx-numberbox,
+  .dx-tagbox {
+    min-height: var(--touch-control-height);
+  }
+
+  .dx-button-content,
+  .dx-texteditor-input {
+    min-height: calc(var(--touch-control-height) - 2px);
+  }
+
+  .dx-datagrid-search-panel {
+    width: 100% !important;
   }
 }

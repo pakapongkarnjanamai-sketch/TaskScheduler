@@ -1,14 +1,14 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import DataGrid, {
   Column,
+  ColumnFixing,
   Scrolling,
-  Toolbar,
-  Item as ToolbarItem,
 } from 'devextreme-react/data-grid'
 import type { DataGridRef } from 'devextreme-react/data-grid'
 import notify from 'devextreme/ui/notify'
 import { createTaskScopedDataSource } from '../../api/dataSources'
 import { deleteEntity } from '../../api/adminApi'
+import { fixedActionColumnProps, standardVirtualScrollingProps, workspaceDataGridProps } from '../../components/grid/dataGridConfig'
 import { StatusText } from '../../components/StatusText'
 import type { Schedule } from '../../types/entities'
 import { buildScheduleSummary } from './scheduleRules'
@@ -16,12 +16,13 @@ import { buildScheduleSummary } from './scheduleRules'
 type SchedulesGridProps = {
   taskId: number
   refreshKey: number
+  breadcrumb?: ReactNode
   onCreate: () => void
   onEdit: (schedule: Schedule) => void
   onChanged: () => void
 }
 
-export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: SchedulesGridProps) {
+export function SchedulesGrid({ taskId, breadcrumb, onCreate, onEdit, onChanged }: SchedulesGridProps) {
   const gridRef = useRef<DataGridRef<Schedule, number>>(null)
   const dataSource = useMemo(() => createTaskScopedDataSource('Schedules', taskId), [taskId])
   const [pendingDeleteScheduleId, setPendingDeleteScheduleId] = useState<number | null>(null)
@@ -43,16 +44,14 @@ export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: Schedules
     }
   }
 
-  async function refreshGrid() {
-    await gridRef.current?.instance().refresh()
-  }
-
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header">
-        <div>
-          <p className="workspace-view__eyebrow">Schedules</p>
-          <h2>Run Patterns</h2>
+      <div className="workspace-view__header workspace-view__header--actions-only">
+        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
+        <div className="workspace-view__actions">
+          <button type="button" className="row-action row-action--primary" onClick={onCreate}>
+            Add Schedule
+          </button>
         </div>
       </div>
 
@@ -60,27 +59,11 @@ export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: Schedules
         <DataGrid
           ref={gridRef}
           dataSource={dataSource}
-          showBorders
-          rowAlternationEnabled
-          columnAutoWidth
-          wordWrapEnabled
-          hoverStateEnabled
-          height={520}
+          {...workspaceDataGridProps}
           noDataText="No schedules configured yet."
         >
-          <Scrolling mode="virtual" />
-          <Toolbar>
-            <ToolbarItem
-              location="after"
-              widget="dxButton"
-              options={{ icon: 'refresh', hint: 'Refresh schedules', onClick: refreshGrid }}
-            />
-            <ToolbarItem
-              location="after"
-              widget="dxButton"
-              options={{ icon: 'event', text: 'Add Schedule', type: 'default', onClick: onCreate }}
-            />
-          </Toolbar>
+          <ColumnFixing enabled={true} />
+          <Scrolling {...standardVirtualScrollingProps} />
 
           <Column dataField="Name" caption="Schedule" minWidth={160} />
           <Column dataField="Description" minWidth={150} />
@@ -95,17 +78,13 @@ export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: Schedules
           <Column caption="Recurrence" minWidth={200} calculateCellValue={(schedule: Schedule) => buildScheduleSummary(schedule)} />
           <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={140} />
           <Column
-            caption="Actions"
-            minWidth={180}
-            allowSorting={false}
-            allowFiltering={false}
-            allowHeaderFiltering={false}
+            {...fixedActionColumnProps}
             cellRender={(cell) => {
               const schedule = cell.data as Schedule
               const isDeletePending = pendingDeleteScheduleId === schedule.Id
 
               return (
-                <div className="row-action-stack">
+                <div className="row-action-stack row-action-stack--right">
                   <div className="row-action-group">
                     <button
                       type="button"
@@ -139,7 +118,7 @@ export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: Schedules
                             void removeSchedule(schedule)
                           }}
                         >
-                          Confirm delete
+                          Confirm Delete
                         </button>
                         <button
                           type="button"
@@ -154,7 +133,6 @@ export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: Schedules
                       </>
                     )}
                   </div>
-                  {isDeletePending && <div className="inline-warning">Deleting a schedule does not remove execution history.</div>}
                 </div>
               )
             }}

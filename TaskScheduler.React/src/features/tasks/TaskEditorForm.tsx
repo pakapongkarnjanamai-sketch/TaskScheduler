@@ -1,5 +1,4 @@
-import { useState, type ComponentProps } from 'react'
-import Button from 'devextreme-react/button'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
 import 'devextreme/ui/text_box'
@@ -10,6 +9,7 @@ import type { TaskSummary } from '../../types/entities'
 
 type TaskEditorFormProps = {
   task: TaskSummary | null
+  breadcrumb?: ReactNode
   onCancel: () => void
   onSaved: (task: TaskSummary) => void
 }
@@ -27,7 +27,7 @@ function createTaskDraft(task: TaskSummary | null): TaskDraft {
   }
 }
 
-export function TaskEditorForm({ task, onCancel, onSaved }: TaskEditorFormProps) {
+export function TaskEditorForm({ task, breadcrumb, onSaved }: TaskEditorFormProps) {
   const [formData, setFormData] = useState<TaskDraft>(() => createTaskDraft(task))
   const isEdit = formData.Id > 0
 
@@ -74,14 +74,12 @@ export function TaskEditorForm({ task, onCancel, onSaved }: TaskEditorFormProps)
 
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header">
-        <div>
-          <p className="workspace-view__eyebrow">Task Editor</p>
-          <h2>{isEdit ? `Edit ${formData.Name || 'Task'}` : 'Create Task'}</h2>
-        </div>
+      <div className="workspace-view__header workspace-view__header--actions-only">
+        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions">
-          <Button text="Back" stylingMode="outlined" onClick={onCancel} />
-          <Button text="Save Task" type="default" onClick={saveTask} />
+          <button type="button" className="row-action row-action--primary" onClick={() => void saveTask()}>
+            Save Task
+          </button>
         </div>
       </div>
 

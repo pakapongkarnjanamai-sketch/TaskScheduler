@@ -1,5 +1,4 @@
-import { useState, type ComponentProps } from 'react'
-import Button from 'devextreme-react/button'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
 import notify from 'devextreme/ui/notify'
 import 'devextreme/ui/text_box'
@@ -25,6 +24,7 @@ import {
 type ScheduleEditorFormProps = {
   task: TaskSummary
   schedule: Schedule | null
+  breadcrumb?: ReactNode
   onCancel: () => void
   onSaved: () => void
 }
@@ -44,7 +44,7 @@ function normalizeSchedule(taskId: number, schedule: Schedule | null): Schedule 
   }
 }
 
-export function ScheduleEditorForm({ task, schedule, onCancel, onSaved }: ScheduleEditorFormProps) {
+export function ScheduleEditorForm({ task, schedule, breadcrumb, onSaved }: ScheduleEditorFormProps) {
   const [formData, setFormData] = useState<Schedule>(() => normalizeSchedule(task.Id, schedule))
   const isEdit = formData.Id > 0
   const rule = getTriggerRule(formData.TriggerType)
@@ -110,14 +110,12 @@ export function ScheduleEditorForm({ task, schedule, onCancel, onSaved }: Schedu
 
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header">
-        <div>
-          <p className="workspace-view__eyebrow">Schedule Editor</p>
-          <h2>{isEdit ? `Edit ${formData.Name || 'Schedule'}` : `Add Schedule to ${task.Name}`}</h2>
-        </div>
+      <div className="workspace-view__header workspace-view__header--actions-only">
+        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions">
-          <Button text="Back" stylingMode="outlined" onClick={onCancel} />
-          <Button text="Save Schedule" type="default" onClick={saveSchedule} />
+          <button type="button" className="row-action row-action--primary" onClick={() => void saveSchedule()}>
+            Save Schedule
+          </button>
         </div>
       </div>
 
@@ -177,8 +175,6 @@ export function ScheduleEditorForm({ task, schedule, onCancel, onSaved }: Schedu
           </GroupItem>
         </DxForm>
       </div>
-
-      <div className="workspace-meta-line">Thailand business time (UTC+7). Use HH:mm or HH:mm:ss.</div>
     </section>
   )
 }

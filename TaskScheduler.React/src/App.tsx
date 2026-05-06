@@ -13,9 +13,24 @@ if (licenseKey) {
   config({ licenseKey })
 }
 
+function normalizeRouterBasePath(value: string | undefined) {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue || trimmedValue === '/') {
+    return '/'
+  }
+
+  const withLeadingSlash = trimmedValue.startsWith('/') ? trimmedValue : `/${trimmedValue}`
+  return withLeadingSlash.endsWith('/')
+    ? withLeadingSlash.slice(0, -1)
+    : withLeadingSlash
+}
+
+const routerBasePath = normalizeRouterBasePath(import.meta.env.VITE_TASKSCHEDULER_APP_BASE_PATH)
+
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasePath}>
       <TaskUpdatesProvider>
         <Routes>
           <Route path="/" element={<Navigate to={taskPaths.catalog} replace />} />

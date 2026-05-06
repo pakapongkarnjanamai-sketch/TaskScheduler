@@ -1,4 +1,3 @@
-import Button from 'devextreme-react/button'
 import type { StepRequestTestResult } from '../../types/entities'
 
 type StepRequestTestResultViewProps = {
@@ -50,10 +49,11 @@ export function StepRequestTestResultView({ result, onClear }: StepRequestTestRe
     <section className="workspace-card">
       <div className="workspace-section__header">
         <div>
-          <p className="workspace-view__eyebrow">Request Test</p>
           <h3>Latest Result</h3>
         </div>
-        <Button text="Clear" stylingMode="outlined" onClick={onClear} />
+        <button type="button" className="row-action" onClick={onClear}>
+          Clear
+        </button>
       </div>
 
       <div className="request-test-summary">
