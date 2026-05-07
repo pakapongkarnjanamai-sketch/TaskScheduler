@@ -79,6 +79,14 @@ export function TaskCatalogPage() {
 
   return (
     <TaskLayoutShell
+      sidebar={{
+        label: 'Main Navigation',
+        ariaLabel: 'Main navigation',
+        items: [
+          { key: 'dashboard', label: 'Dashboard', to: taskPaths.dashboard, end: true },
+          { key: 'catalog', label: 'Task Catalog', to: taskPaths.catalog, end: true },
+        ],
+      }}
       title="Task Catalog"
       description="Review tasks, open a workspace, or start a new setup flow."
       showTopBar={false}

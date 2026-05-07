@@ -12,6 +12,11 @@ const TaskCatalogPage = lazy(async () => {
   return { default: module.TaskCatalogPage }
 })
 
+const DashboardPage = lazy(async () => {
+  const module = await import('./features/tasks/DashboardPage')
+  return { default: module.DashboardPage }
+})
+
 const TaskCreatePage = lazy(async () => {
   const module = await import('./features/tasks/TaskCreatePage')
   return { default: module.TaskCreatePage }
@@ -46,8 +51,16 @@ function App() {
     <BrowserRouter basename={routerBasePath}>
       <TaskUpdatesProvider>
         <Routes>
-          <Route path="/" element={<Navigate to={taskPaths.catalog} replace />} />
+          <Route path="/" element={<Navigate to={taskPaths.dashboard} replace />} />
           <Route element={<TaskAppShell />}>
+            <Route
+              path="/dashboard"
+              element={(
+                <Suspense fallback={null}>
+                  <DashboardPage />
+                </Suspense>
+              )}
+            />
             <Route
               path="/tasks"
               element={(
@@ -146,7 +159,7 @@ function App() {
               )}
             />
           </Route>
-          <Route path="*" element={<Navigate to={taskPaths.catalog} replace />} />
+          <Route path="*" element={<Navigate to={taskPaths.dashboard} replace />} />
         </Routes>
       </TaskUpdatesProvider>
     </BrowserRouter>

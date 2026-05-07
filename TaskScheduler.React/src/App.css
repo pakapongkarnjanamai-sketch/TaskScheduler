@@ -352,6 +352,118 @@
   gap: var(--gap);
 }
 
+.dashboard-page,
+.dashboard-block,
+.dashboard-block__header,
+.dashboard-stats,
+.dashboard-signals {
+  display: grid;
+}
+
+.dashboard-page {
+  gap: var(--block);
+}
+
+.dashboard-block {
+  gap: var(--gap);
+  border: 1px solid var(--grid-line);
+  border-radius: var(--radius-panel);
+  background: var(--panel-plane);
+  padding: var(--block);
+}
+
+.dashboard-block__header {
+  gap: 4px;
+  padding-bottom: var(--gap);
+  border-bottom: 1px solid var(--grid-line);
+}
+
+.dashboard-block__header h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.dashboard-block__header p,
+.dashboard-empty {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-stats,
+.dashboard-signals {
+  gap: 8px;
+}
+
+.dashboard-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-signals {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.dashboard-stats div,
+.dashboard-signals div {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--grid-line);
+}
+
+.dashboard-stats dt,
+.dashboard-signals dt,
+.dashboard-stats dd,
+.dashboard-signals dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-stats dt,
+.dashboard-signals dt {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.dashboard-stats dd,
+.dashboard-signals dd {
+  color: var(--ink-strong);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--grid-line);
+  color: var(--ink-base);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-table th {
+  color: var(--ink-strong);
+  font-weight: 650;
+}
+
 .catalog-page {
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
@@ -1271,6 +1383,11 @@ a:focus-visible,
   .request-test-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dashboard-stats,
+  .dashboard-signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1319,6 +1436,11 @@ a:focus-visible,
 
   .summary-grid,
   .request-test-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-stats,
+  .dashboard-signals {
     grid-template-columns: 1fr;
   }
 

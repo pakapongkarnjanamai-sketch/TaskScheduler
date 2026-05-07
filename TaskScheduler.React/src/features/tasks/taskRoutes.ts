@@ -1,4 +1,5 @@
 export const taskPaths = {
+  dashboard: '/dashboard',
   catalog: '/tasks',
   newTask: '/tasks/new',
   task: (taskId: number | string) => `/tasks/${taskId}`,
