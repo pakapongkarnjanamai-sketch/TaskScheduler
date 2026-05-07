@@ -60,7 +60,7 @@ function Invoke-RobocopyMirror {
     }
 
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    & robocopy $Source $Destination /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS
+    & robocopy $Source $Destination /MIR /R:60 /W:2 /NFL /NDL /NJH /NJS
     $exitCode = $LASTEXITCODE
 
     if ($exitCode -ge 8) {
