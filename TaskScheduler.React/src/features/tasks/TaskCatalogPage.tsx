@@ -12,6 +12,7 @@ import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
 import { catalogDataGridProps, standardVirtualScrollingProps } from '../../components/grid/dataGridConfig'
 import { StatusText } from '../../components/StatusText'
 import type { TaskSummary } from '../../types/entities'
+import { TaskLayoutShell } from './TaskLayoutShell'
 import { taskPaths } from './taskRoutes'
 
 type PushableTaskStore = {
@@ -50,49 +51,53 @@ export function TaskCatalogPage() {
   }, [lastUpdate])
 
   return (
-    <section className="catalog-page">
-      <div className="page-toolbar">
-        <div />
+    <TaskLayoutShell
+      title="Task Catalog"
+      description="Review tasks, open a workspace, or start a new setup flow."
+      showTopBar={false}
+      headerContent={(
         <div className="workspace-view__actions">
           <button type="button" className="row-action row-action--primary" onClick={() => navigate(taskPaths.newTask)}>
             Create Task
           </button>
         </div>
-      </div>
+      )}
+    >
+      <section className="catalog-page">
+        <div className="catalog-panel">
+          <DataGrid
+            ref={gridRef}
+            dataSource={tasksStore}
+            {...catalogDataGridProps}
+            onRowClick={(event) => {
+              if (event.rowType !== 'data') {
+                return
+              }
 
-      <div className="catalog-panel">
-        <DataGrid
-          ref={gridRef}
-          dataSource={tasksStore}
-          {...catalogDataGridProps}
-          onRowClick={(event) => {
-            if (event.rowType !== 'data') {
-              return
-            }
+              navigate(taskPaths.overview((event.data as TaskSummary).Id))
+            }}
+          >
+            <Selection mode="single" />
+            <FilterRow visible />
+            <Scrolling {...standardVirtualScrollingProps} />
 
-            navigate(taskPaths.overview((event.data as TaskSummary).Id))
-          }}
-        >
-          <Selection mode="single" />
-          <FilterRow visible />
-          <Scrolling {...standardVirtualScrollingProps} />
-
-          <Column dataField="Id" width={70} allowEditing={false} />
-          <Column
-            dataField="IsActive"
-            caption="Enabled"
-            dataType="boolean"
-            width={100}
-            cellRender={({ value }) => <StatusText value={value ? 'Enabled' : 'Disabled'} />}
-          />
-          <Column dataField="Name" caption="Task Name" minWidth={220} />
-          <Column dataField="Description" minWidth={280} />
-          <Column dataField="LastStatus" caption="Status" width={120} allowEditing={false} cellRender={({ value }) => <StatusText value={value} />} />
-          <Column dataField="LastExecutionTime" caption="Last Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
-          <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
-          <Column dataField="UpdatedAt" caption="Last Updated" dataType="datetime" format="dd/MM/yyyy HH:mm" width={160} allowEditing={false} />
-        </DataGrid>
-      </div>
-    </section>
+            <Column dataField="Id" width={70} allowEditing={false} />
+            <Column
+              dataField="IsActive"
+              caption="Enabled"
+              dataType="boolean"
+              width={100}
+              cellRender={({ value }) => <StatusText value={value ? 'Enabled' : 'Disabled'} />}
+            />
+            <Column dataField="Name" caption="Task Name" minWidth={220} />
+            <Column dataField="Description" minWidth={280} />
+            <Column dataField="LastStatus" caption="Status" width={120} allowEditing={false} cellRender={({ value }) => <StatusText value={value} />} />
+            <Column dataField="LastExecutionTime" caption="Last Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
+            <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
+            <Column dataField="UpdatedAt" caption="Last Updated" dataType="datetime" format="dd/MM/yyyy HH:mm" width={160} allowEditing={false} />
+          </DataGrid>
+        </div>
+      </section>
+    </TaskLayoutShell>
   )
 }

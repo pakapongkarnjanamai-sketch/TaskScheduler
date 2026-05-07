@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import DataGrid, {
   Column,
   ColumnFixing,
@@ -16,13 +16,12 @@ import { buildScheduleSummary } from './scheduleRules'
 type SchedulesGridProps = {
   taskId: number
   refreshKey: number
-  breadcrumb?: ReactNode
   onCreate: () => void
   onEdit: (schedule: Schedule) => void
   onChanged: () => void
 }
 
-export function SchedulesGrid({ taskId, breadcrumb, onCreate, onEdit, onChanged }: SchedulesGridProps) {
+export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: SchedulesGridProps) {
   const gridRef = useRef<DataGridRef<Schedule, number>>(null)
   const dataSource = useMemo(() => createTaskScopedDataSource('Schedules', taskId), [taskId])
   const [pendingDeleteScheduleId, setPendingDeleteScheduleId] = useState<number | null>(null)
@@ -47,7 +46,6 @@ export function SchedulesGrid({ taskId, breadcrumb, onCreate, onEdit, onChanged 
   return (
     <section className="workspace-view">
       <div className="workspace-view__header workspace-view__header--actions-only">
-        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions">
           <button type="button" className="row-action row-action--primary" onClick={onCreate}>
             Add Schedule

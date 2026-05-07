@@ -1,30 +1,16 @@
-import { Outlet } from 'react-router-dom'
-import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
-import { StatusText } from '../../components/StatusText'
-import { appConfig } from '../../config/appConfig'
+import { NavLink, Outlet } from 'react-router-dom'
+import { taskPaths } from './taskRoutes'
 
 export function TaskAppShell() {
-  const { connectionStatus } = useTaskUpdatesContext()
-
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="app-title-block">
-          <span className="app-title">TaskScheduler</span>
-        </div>
-        <dl className="app-meta">
-          <div className="app-meta__item">
-            <dt>SignalR</dt>
-            <dd><StatusText value={connectionStatus} /></dd>
-          </div>
-          <div className="app-meta__item">
-            <dt>API</dt>
-            <dd>{appConfig.apiBaseUrl}</dd>
-          </div>
-        </dl>
+      <header className="app-shell__top-header">
+        <NavLink className="app-shell__home-link" to={taskPaths.catalog}>
+          TaskScheduler
+        </NavLink>
       </header>
 
-      <main className="app-shell__body">
+      <main className="app-shell__body app-shell__body--shell">
         <Outlet />
       </main>
     </div>

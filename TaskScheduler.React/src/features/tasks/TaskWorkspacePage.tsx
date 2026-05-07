@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { loadEntityById } from '../../api/adminApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
+import { StatusText } from '../../components/StatusText'
 import { ExecutionHistoryView } from '../logs/ExecutionHistoryView'
 import { StepLogsView } from '../logs/StepLogsView'
 import { ScheduleEditorForm } from '../schedules/ScheduleEditorForm'
@@ -9,6 +10,7 @@ import { SchedulesGrid } from '../schedules/SchedulesGrid'
 import { StepEditorForm } from '../steps/StepEditorForm'
 import { StepsGrid } from '../steps/StepsGrid'
 import type { Schedule, Step, TaskSummary } from '../../types/entities'
+import { TaskLayoutShell, type TaskShellBreadcrumb, type TaskShellNavItem } from './TaskLayoutShell'
 import { TaskEditorForm } from './TaskEditorForm'
 import { taskPaths } from './taskRoutes'
 
@@ -33,8 +35,19 @@ const workspaceMenuLabelByView: Record<TaskWorkspaceView, string> = {
   'step-editor': 'Step',
   schedules: 'Schedules',
   'schedule-editor': 'Schedule',
-  history: 'Execution History',
+  history: 'History',
   'step-logs': 'Logs',
+}
+
+const workspaceDescriptionByView: Record<TaskWorkspaceView, string> = {
+  overview: 'Monitor recent runs, next execution timing, and the latest health signals for this task.',
+  'task-editor': 'Update the task identity and any operating notes the team needs while managing it.',
+  steps: 'Review, order, and maintain the request steps this task should run.',
+  'step-editor': 'Define the request, payload, and ordering details for this step.',
+  schedules: 'Review the recurring schedules attached to this task and their next run timing.',
+  'schedule-editor': 'Choose the recurrence pattern and fill only the timing fields that apply.',
+  history: 'Inspect task-level execution history and recent response messages.',
+  'step-logs': 'Inspect step-level logs to troubleshoot failures and confirm downstream responses.',
 }
 
 function formatDateTime(value?: string | null, fallback = 'Not available') {
@@ -72,30 +85,12 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   const [contentError, setContentError] = useState<string | null>(null)
   const [stepsRefreshKey, setStepsRefreshKey] = useState(0)
   const [schedulesRefreshKey, setSchedulesRefreshKey] = useState(0)
-  const [isRailOpen, setIsRailOpen] = useState(true)
 
   useEffect(() => {
     if (hasInvalidTaskRoute) {
       navigate(taskPaths.catalog, { replace: true })
     }
   }, [hasInvalidTaskRoute, navigate])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 960px)')
-    const syncRailState = (isMobile: boolean) => {
-      setIsRailOpen(!isMobile)
-    }
-
-    syncRailState(mediaQuery.matches)
-    const handleChange = (event: MediaQueryListEvent) => {
-      syncRailState(event.matches)
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [])
 
   // Load the task only when taskId changes — NOT when view changes
   useEffect(() => {
@@ -212,58 +207,49 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   const currentTask = lastUpdate && lastUpdate.taskId === task?.Id
     ? { ...task, ...lastUpdate.payload }
     : task
-  function getMenuSegments(currentView: TaskWorkspaceView) {
+  function getCurrentSectionLabel(currentView: TaskWorkspaceView) {
     if (currentView === 'step-editor') {
-      return ['Step', stepId ? 'Editor' : 'Add']
+      return stepId ? 'Edit Step' : 'New Step'
     }
 
     if (currentView === 'schedule-editor') {
-      return ['Schedule', scheduleId ? 'Editor' : 'Add']
+      return scheduleId ? 'Edit Schedule' : 'New Schedule'
     }
 
-    return [workspaceMenuLabelByView[currentView]]
+    return workspaceMenuLabelByView[currentView]
   }
 
-  const menuSegments = getMenuSegments(view)
+  const currentSectionLabel = getCurrentSectionLabel(view)
+  const shellBreadcrumbs: TaskShellBreadcrumb[] = currentTask
+    ? view === 'overview'
+      ? [
+          { label: 'Tasks', to: taskPaths.catalog },
+          { label: currentTask.Name },
+        ]
+      : [
+          { label: 'Tasks', to: taskPaths.catalog },
+          { label: currentTask.Name, to: taskPaths.overview(currentTask.Id) },
+          { label: currentSectionLabel },
+        ]
+    : [
+        { label: 'Tasks', to: taskPaths.catalog },
+        { label: 'Task Workspace' },
+      ]
 
-  function navLinkClass({ isActive }: { isActive: boolean }) {
-    return isActive ? 'workspace-rail__link workspace-rail__link--active' : 'workspace-rail__link'
-  }
-
-  function handleRailNavigation() {
-    if (window.matchMedia('(max-width: 960px)').matches) {
-      setIsRailOpen(false)
-    }
-  }
-
-  function renderBreadcrumb(taskName: string) {
-    const breadcrumbSegments = ['Tasks', taskName, ...menuSegments]
-
-    return (
-      <p className="workspace-breadcrumb" aria-label="Workspace breadcrumb">
-        {breadcrumbSegments.map((segment, index) => (
-          <span key={`${segment}-${index}`} className="workspace-breadcrumb__item">
-            {index > 0 && <span className="workspace-breadcrumb__separator">/</span>}
-            {index === 0 ? (
-              <NavLink to={taskPaths.catalog} className="workspace-breadcrumb__link">
-                {segment}
-              </NavLink>
-            ) : (
-              <span>{segment}</span>
-            )}
-          </span>
-        ))}
-      </p>
-    )
-  }
+  const shellNavItems: TaskShellNavItem[] = [
+    { key: 'overview', label: 'Overview', to: taskPaths.overview(taskId), end: true },
+    { key: 'task-editor', label: 'Details', to: taskPaths.edit(taskId) },
+    { key: 'steps', label: 'Steps', to: taskPaths.steps(taskId) },
+    { key: 'schedules', label: 'Schedules', to: taskPaths.schedules(taskId) },
+    { key: 'history', label: 'History', to: taskPaths.history(taskId) },
+    { key: 'step-logs', label: 'Logs', to: taskPaths.stepLogs(taskId) },
+  ]
 
 
 
   function renderOverview(t: TaskSummary) {
     return (
       <section className="workspace-view">
-        {renderBreadcrumb(t.Name)}
-
         <div className="summary-grid">
           <div className="summary-metric">
             <span>Last Run</span>
@@ -292,40 +278,23 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
   }
 
   return (
-    <section className={isRailOpen ? 'workspace-shell' : 'workspace-shell workspace-shell--rail-collapsed'}>
-      <aside className="workspace-rail" aria-label="Task workspace navigation">
-        <nav id="task-workspace-nav" className="workspace-rail__nav">
-          <NavLink to={taskPaths.overview(taskId)} end className={navLinkClass} onClick={handleRailNavigation}>
-            Overview
-          </NavLink>
-          <NavLink to={taskPaths.edit(taskId)} className={navLinkClass} onClick={handleRailNavigation}>
-            Task Details
-          </NavLink>
-          <NavLink to={taskPaths.steps(taskId)} className={navLinkClass} onClick={handleRailNavigation}>
-            Steps
-          </NavLink>
-          <NavLink to={taskPaths.schedules(taskId)} className={navLinkClass} onClick={handleRailNavigation}>
-            Schedules
-          </NavLink>
-          <NavLink to={taskPaths.history(taskId)} className={navLinkClass} onClick={handleRailNavigation}>
-            Execution History
-          </NavLink>
-          <NavLink to={taskPaths.stepLogs(taskId)} className={navLinkClass} onClick={handleRailNavigation}>
-            Step Logs
-          </NavLink>
-        </nav>
-      </aside>
-
-      <div className="workspace-content">
-        <button
-          type="button"
-          className="workspace-rail-toggle"
-          onClick={() => setIsRailOpen((currentValue) => !currentValue)}
-          aria-expanded={isRailOpen}
-          aria-controls="task-workspace-nav"
-        >
-          Menu
-        </button>
+    <TaskLayoutShell
+      sidebar={{
+        label: currentTask?.Name ?? 'Task Workspace',
+        meta: currentSectionLabel,
+        ariaLabel: 'Task workspace navigation',
+        items: shellNavItems,
+      }}
+      breadcrumbs={shellBreadcrumbs}
+      title={currentTask?.Name ?? 'Task Workspace'}
+      description={currentTask ? workspaceDescriptionByView[view] : 'Loading task context.'}
+      topBarContent={currentTask ? (
+        <div className="status-row">
+          <span>Status</span>
+          <StatusText value={currentTask.LastStatus || 'Not run'} />
+        </div>
+      ) : undefined}
+    >
         {isLoading ? (
           <section className="workspace-state">
             <p className="workspace-state__eyebrow">Task Workspace</p>
@@ -348,6 +317,9 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
             <h2>Unable to open this item</h2>
             <p>{contentError}</p>
             <div className="workspace-state__actions">
+              <button type="button" className="row-action" onClick={() => navigate(taskPaths.overview(currentTask.Id))}>
+                Return to overview
+              </button>
             </div>
           </section>
         ) : (
@@ -357,7 +329,6 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
               <TaskEditorForm
                 key={currentTask.Id}
                 task={currentTask}
-                breadcrumb={renderBreadcrumb(currentTask.Name)}
                 onCancel={() => navigate(taskPaths.overview(currentTask.Id))}
                 onSaved={(savedTask) => {
                   setTask(savedTask)
@@ -370,7 +341,6 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
                 key={`${currentTask.Id}-${stepsRefreshKey}`}
                 taskId={currentTask.Id}
                 refreshKey={stepsRefreshKey}
-                breadcrumb={renderBreadcrumb(currentTask.Name)}
                 onCreate={() => navigate(taskPaths.newStep(currentTask.Id))}
                 onEdit={(selectedStep) => navigate(taskPaths.editStep(currentTask.Id, selectedStep.Id))}
               />
@@ -380,7 +350,6 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
                 key={step?.Id ?? `new-step-${currentTask.Id}`}
                 task={currentTask}
                 step={step}
-                breadcrumb={renderBreadcrumb(currentTask.Name)}
                 onCancel={() => navigate(taskPaths.steps(currentTask.Id))}
                 onSaved={(savedStep) => {
                   setStep(savedStep)
@@ -394,7 +363,6 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
                 key={`${currentTask.Id}-${schedulesRefreshKey}`}
                 taskId={currentTask.Id}
                 refreshKey={schedulesRefreshKey}
-                breadcrumb={renderBreadcrumb(currentTask.Name)}
                 onCreate={() => navigate(taskPaths.newSchedule(currentTask.Id))}
                 onEdit={(selectedSchedule) => navigate(taskPaths.editSchedule(currentTask.Id, selectedSchedule.Id))}
                 onChanged={() => {
@@ -407,7 +375,6 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
                 key={schedule?.Id ?? `new-schedule-${currentTask.Id}`}
                 task={currentTask}
                 schedule={schedule}
-                breadcrumb={renderBreadcrumb(currentTask.Name)}
                 onCancel={() => navigate(taskPaths.schedules(currentTask.Id))}
                 onSaved={() => {
                   setSchedule(null)
@@ -417,11 +384,10 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
                 }}
               />
             )}
-            {view === 'history' && <ExecutionHistoryView task={currentTask} breadcrumb={renderBreadcrumb(currentTask.Name)} />}
-            {view === 'step-logs' && <StepLogsView task={currentTask} breadcrumb={renderBreadcrumb(currentTask.Name)} />}
+            {view === 'history' && <ExecutionHistoryView task={currentTask} />}
+            {view === 'step-logs' && <StepLogsView task={currentTask} />}
           </>
         )}
-      </div>
-    </section>
+    </TaskLayoutShell>
   )
 }

@@ -1,22 +1,15 @@
-import { useState, type ComponentProps, type ReactNode } from 'react'
-import DxForm, { GroupItem, Label, SimpleItem } from 'devextreme-react/form'
+import { useId, useState } from 'react'
 import notify from 'devextreme/ui/notify'
-import 'devextreme/ui/text_box'
-import 'devextreme/ui/text_area'
-import 'devextreme/ui/switch'
 import { createEntity, updateEntity } from '../../api/adminApi'
 import type { TaskSummary } from '../../types/entities'
 
 type TaskEditorFormProps = {
   task: TaskSummary | null
-  breadcrumb?: ReactNode
   onCancel: () => void
   onSaved: (task: TaskSummary) => void
 }
 
 type TaskDraft = Pick<TaskSummary, 'Id' | 'IsActive' | 'Name' | 'Description'>
-
-type FormFieldChangeEvent = Parameters<NonNullable<ComponentProps<typeof DxForm>['onFieldDataChanged']>>[0]
 
 function createTaskDraft(task: TaskSummary | null): TaskDraft {
   return {
@@ -27,25 +20,10 @@ function createTaskDraft(task: TaskSummary | null): TaskDraft {
   }
 }
 
-export function TaskEditorForm({ task, breadcrumb, onSaved }: TaskEditorFormProps) {
+export function TaskEditorForm({ task, onSaved }: TaskEditorFormProps) {
   const [formData, setFormData] = useState<TaskDraft>(() => createTaskDraft(task))
+  const fieldId = useId()
   const isEdit = formData.Id > 0
-
-  function handleFieldChange(event: FormFieldChangeEvent) {
-    switch (event.dataField) {
-      case 'Name':
-        setFormData((currentData) => ({ ...currentData, Name: String(event.value ?? '') }))
-        break
-      case 'Description':
-        setFormData((currentData) => ({ ...currentData, Description: String(event.value ?? '') }))
-        break
-      case 'IsActive':
-        setFormData((currentData) => ({ ...currentData, IsActive: Boolean(event.value) }))
-        break
-      default:
-        break
-    }
-  }
 
   async function saveTask() {
     const name = formData.Name.trim()
@@ -72,32 +50,75 @@ export function TaskEditorForm({ task, breadcrumb, onSaved }: TaskEditorFormProp
     }
   }
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    void saveTask()
+  }
+
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header workspace-view__header--actions-only">
-        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
-        <div className="workspace-view__actions">
-          <button type="button" className="row-action row-action--primary" onClick={() => void saveTask()}>
-            Save Task
-          </button>
+      <form className="editor-form editor-form--task" onSubmit={handleSubmit}>
+        <div className="workspace-view__header workspace-view__header--actions-only">
+          <div className="workspace-view__actions">
+            <button type="submit" className="row-action row-action--primary">
+              Save Task
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="workspace-card">
-        <DxForm formData={formData} colCount={2} labelLocation="top" onFieldDataChanged={handleFieldChange}>
-          <GroupItem colCount={2} caption="Task Details">
-            <SimpleItem dataField="Name" isRequired colSpan={2}>
-              <Label text="Task Name" />
-            </SimpleItem>
-            <SimpleItem dataField="IsActive" editorType="dxSwitch">
-              <Label text="Enabled" />
-            </SimpleItem>
-            <SimpleItem dataField="Description" editorType="dxTextArea" colSpan={2} editorOptions={{ minHeight: 140 }}>
-              <Label text="Description" />
-            </SimpleItem>
-          </GroupItem>
-        </DxForm>
-      </div>
+        <section className="workspace-card editor-form__section editor-form__section--identity">
+          <div className="editor-form__section-header">
+            <div className="editor-form__section-title-block">
+              <h2>Task Details</h2>
+              <p>Set the task name first, then add any operating notes.</p>
+            </div>
+            <label className="editor-toggle" htmlFor={`${fieldId}-active`}>
+              <input
+                id={`${fieldId}-active`}
+                type="checkbox"
+                checked={formData.IsActive}
+                onChange={(event) => {
+                  setFormData((currentData) => ({ ...currentData, IsActive: event.target.checked }))
+                }}
+              />
+              <span>Enabled</span>
+            </label>
+          </div>
+
+          <div className="editor-form__grid editor-form__grid--single-column">
+            <div className="editor-field editor-field--required">
+              <label className="editor-field__label" htmlFor={`${fieldId}-name`}>
+                Task Name
+              </label>
+              <input
+                id={`${fieldId}-name`}
+                className="editor-field__control"
+                type="text"
+                value={formData.Name}
+                onChange={(event) => {
+                  setFormData((currentData) => ({ ...currentData, Name: event.target.value }))
+                }}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="editor-field">
+              <label className="editor-field__label" htmlFor={`${fieldId}-description`}>
+                Description
+              </label>
+              <textarea
+                id={`${fieldId}-description`}
+                className="editor-field__control editor-field__control--multiline"
+                value={formData.Description ?? ''}
+                onChange={(event) => {
+                  setFormData((currentData) => ({ ...currentData, Description: event.target.value }))
+                }}
+                rows={8}
+              />
+            </div>
+          </div>
+        </section>
+      </form>
     </section>
   )
 }

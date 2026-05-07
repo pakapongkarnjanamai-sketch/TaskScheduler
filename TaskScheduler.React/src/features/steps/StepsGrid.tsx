@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import DataGrid, {
   Column,
@@ -18,14 +18,13 @@ import type { Step } from '../../types/entities'
 type StepsGridProps = {
   taskId: number
   refreshKey: number
-  breadcrumb?: ReactNode
   onCreate: () => void
   onEdit: (step: Step) => void
 }
 
 type StepReorderEvent = Parameters<NonNullable<ComponentProps<typeof RowDragging>['onReorder']>>[0]
 
-export function StepsGrid({ taskId, breadcrumb, onCreate, onEdit }: StepsGridProps) {
+export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
   const gridRef = useRef<DataGridRef<Step, number>>(null)
   const store = useMemo(() => createAdminStore('Steps'), [])
   const dataSource = useMemo(() => createTaskScopedDataSource('Steps', taskId, 'Order'), [taskId])
@@ -74,7 +73,6 @@ export function StepsGrid({ taskId, breadcrumb, onCreate, onEdit }: StepsGridPro
   return (
     <section className="workspace-view">
       <div className="workspace-view__header workspace-view__header--actions-only">
-        {breadcrumb ? <div>{breadcrumb}</div> : <div />}
         <div className="workspace-view__actions">
           <button type="button" className="row-action row-action--primary" onClick={onCreate}>
             Add Step
