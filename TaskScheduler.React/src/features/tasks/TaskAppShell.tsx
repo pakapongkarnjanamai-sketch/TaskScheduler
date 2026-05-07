@@ -21,6 +21,12 @@ export function TaskAppShell() {
     <div className="app-shell">
       <header className="app-shell__top-header">
         <NavLink className="app-shell__home-link" to={taskPaths.catalog}>
+          <span className="app-shell__brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" focusable="false">
+              <rect x="1" y="1" width="14" height="14" rx="2" />
+              <path d="M4 8h2l1-2 2 4 1-2h2" />
+            </svg>
+          </span>
           TaskScheduler
         </NavLink>
         <div className="app-shell__header-end">

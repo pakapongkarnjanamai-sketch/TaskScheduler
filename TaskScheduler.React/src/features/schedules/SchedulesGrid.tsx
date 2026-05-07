@@ -21,7 +21,7 @@ type SchedulesGridProps = {
   onChanged: () => void
 }
 
-export function SchedulesGrid({ taskId, onCreate, onEdit, onChanged }: SchedulesGridProps) {
+export function SchedulesGrid({ taskId, onEdit, onChanged }: SchedulesGridProps) {
   const gridRef = useRef<DataGridRef<Schedule, number>>(null)
   const dataSource = useMemo(() => createTaskScopedDataSource('Schedules', taskId), [taskId])
   const [pendingDeleteScheduleId, setPendingDeleteScheduleId] = useState<number | null>(null)

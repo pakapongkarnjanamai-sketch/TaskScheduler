@@ -69,7 +69,7 @@ export function TaskCatalogPage() {
             ref={gridRef}
             dataSource={tasksStore}
             {...catalogDataGridProps}
-            onRowClick={(event) => {
+            onRowDblClick={(event) => {
               if (event.rowType !== 'data') {
                 return
               }
@@ -78,7 +78,7 @@ export function TaskCatalogPage() {
             }}
           >
             <Selection mode="single" />
-            <FilterRow visible />
+            <FilterRow visible applyFilter="auto" showOperationChooser={false} />
             <Scrolling {...standardVirtualScrollingProps} />
 
             <Column dataField="Id" width={70} allowEditing={false} />

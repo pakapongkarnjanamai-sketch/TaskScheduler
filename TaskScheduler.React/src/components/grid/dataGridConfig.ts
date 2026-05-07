@@ -1,4 +1,5 @@
 export const WORKSPACE_GRID_HEIGHT = 'calc(100vh - 300px)' as const
+export const CATALOG_GRID_HEIGHT = 'calc(100vh - 190px)' as const
 
 export const baseDataGridProps = {
   width: '100%',
@@ -19,7 +20,7 @@ export const catalogDataGridProps = {
   columnAutoWidth: true,
   wordWrapEnabled: true,
   remoteOperations: true,
-  height: '100%',
+  height: CATALOG_GRID_HEIGHT,
 } as const
 
 export const fixedActionColumnProps = {

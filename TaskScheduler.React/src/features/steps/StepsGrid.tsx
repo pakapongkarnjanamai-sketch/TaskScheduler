@@ -24,7 +24,7 @@ type StepsGridProps = {
 
 type StepReorderEvent = Parameters<NonNullable<ComponentProps<typeof RowDragging>['onReorder']>>[0]
 
-export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
+export function StepsGrid({ taskId, onEdit }: StepsGridProps) {
   const gridRef = useRef<DataGridRef<Step, number>>(null)
   const store = useMemo(() => createAdminStore('Steps'), [])
   const dataSource = useMemo(() => createTaskScopedDataSource('Steps', taskId, 'Order'), [taskId])

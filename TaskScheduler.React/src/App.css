@@ -44,12 +44,29 @@
 }
 
 .app-shell__home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: var(--ink-strong);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.5;
   text-decoration: none;
+}
+
+.app-shell__brand-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.app-shell__brand-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
 }
 
 .app-shell__home-link:hover {
@@ -279,7 +296,7 @@
 }
 
 .task-layout__surface {
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--block);
   padding: var(--block) var(--section) var(--section);
 }
@@ -337,11 +354,15 @@
 
 .catalog-page {
   grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
   min-height: 0;
   box-sizing: border-box;
 }
 
 .catalog-panel {
+  height: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -356,10 +377,6 @@
 .workspace-card,
 .workspace-state {
   padding: var(--block);
-}
-
-.catalog-panel {
-  overflow: hidden;
 }
 
 .page-toolbar,
@@ -1078,7 +1095,8 @@ a:focus-visible,
   color: var(--ink-muted);
 }
 
-.workspace-card--flush {
+.workspace-card--flush,
+.catalog-panel {
   display: block;
   padding: 0;
   max-width: 100%;
@@ -1091,6 +1109,7 @@ a:focus-visible,
   border: 0;
   max-width: 100%;
   width: 100% !important;
+  height: 100% !important;
   min-width: 0;
 }
 
