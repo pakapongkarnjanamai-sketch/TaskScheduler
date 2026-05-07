@@ -11,6 +11,7 @@ export const workspaceDataGridProps = {
   ...baseDataGridProps,
   columnAutoWidth: true,
   wordWrapEnabled: true,
+  remoteOperations: true,
   height: WORKSPACE_GRID_HEIGHT,
 } as const
 

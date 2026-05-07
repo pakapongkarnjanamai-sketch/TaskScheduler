@@ -65,7 +65,14 @@ export function SchedulesGrid({ taskId, onEdit, onChanged }: SchedulesGridProps)
             cellRender={({ value }) => <StatusText value={value ? 'Enabled' : 'Disabled'} />}
           />
           <Column dataField="TriggerType" caption="Pattern" width={120} />
-          <Column caption="Recurrence" minWidth={200} calculateCellValue={(schedule: Schedule) => buildScheduleSummary(schedule)} />
+          <Column
+            caption="Recurrence"
+            minWidth={200}
+            calculateCellValue={(schedule: Schedule) => buildScheduleSummary(schedule)}
+            allowSorting={false}
+            allowFiltering={false}
+            allowHeaderFiltering={false}
+          />
           <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={140} />
           <Column
             {...fixedActionColumnProps}

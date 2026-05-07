@@ -125,7 +125,7 @@
                     store: store,
                     filter: ["TaskId", "=", taskId]
                 },
-                remoteOperations: false,
+                remoteOperations: true,
                 showBorders: true,
                 rowAlternationEnabled: true,
                 hoverStateEnabled: true,
@@ -425,6 +425,9 @@
                         caption: "Recurrence",
                         minWidth: 230,
                         allowEditing: false,
+                        allowSorting: false,
+                        allowFiltering: false,
+                        allowHeaderFiltering: false,
                         calculateCellValue: function (data) {
                             return buildScheduleSummary(data);
                         }

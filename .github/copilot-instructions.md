@@ -118,6 +118,7 @@ Implementation notes:
 * Repo-local `dotnet-ef` is pinned in `.config/dotnet-tools.json` to `9.0.11`; use it from the repository root to avoid tool/runtime version drift.
 * Local builds/tests that rebuild TaskScheduler.API or TaskScheduler.Client can fail while those apps are running because the output executable is locked.
 * TaskScheduler.React defaults to direct development API URLs (`https://localhost:7253/api/` and `https://localhost:7253/taskHub`) because Windows/Negotiate authentication does not work reliably through the Vite proxy. The Vite proxy routes remain available only when environment config intentionally points to `/api` and `/taskHub`.
+* MCP documentation servers `dxdocs` and `dxdocs24_2` are configured in `.vscode/mcp.json` and should be used for DevExtreme guidance.
 
 ### Current Implementation Snapshot
 
@@ -125,9 +126,12 @@ Implementation notes:
 * Scheduler recurrence currently supports `Interval`, `Daily`, `Weekly`, and `Monthly`.
 * Schedule timing is treated as Thailand business time (`UTC+7`), and timezone-aware schedule payloads are normalized before extracting `TimeOfDay`.
 * The main scheduler admin UX uses popup/form editing surfaced from `TaskScheduler.Client/Views/Home/Index.cshtml`, while the schedule grid/editor behavior lives in `TaskScheduler.Client/wwwroot/js/schedule-grid-editor.js` and shared recurrence helpers live in `TaskScheduler.Client/wwwroot/js/scheduler-editor.js`.
-* TaskScheduler.React now uses a split workspace layout: the task catalog stays in `TaskScheduler.React/src/features/tasks/TaskSchedulerDashboard.tsx`, and the active task opens into dedicated workspace views for overview, task editing, steps, schedules, execution history, and step logs.
+* TaskScheduler.React now uses a split workspace layout: the task catalog lives in `TaskScheduler.React/src/features/tasks/TaskCatalogPage.tsx`, and task work happens in dedicated workspace routes rendered by `TaskScheduler.React/src/features/tasks/TaskWorkspacePage.tsx`.
+* React shell and navigation are separated: `TaskScheduler.React/src/features/tasks/TaskAppShell.tsx` manages global header concerns (including connection status and theme switch), and `TaskScheduler.React/src/features/tasks/TaskLayoutShell.tsx` manages workspace rail, breadcrumbs, and compact-menu behavior.
 * React editing surfaces now live in dedicated feature components: `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx` handle editing; `ExecutionHistoryView.tsx` and `StepLogsView.tsx` handle log browsing; `StepRequestTestResultView.tsx` renders request-test results inline inside the step workspace.
 * The React frontend still uses SignalR updates through `@microsoft/signalr`, and the dashboard header surfaces the current connection state (`Connected`, `Reconnecting`, `Disconnected`).
+* Theme selection is persisted in `taskscheduler-theme` localStorage and applied via `data-theme` on `document.documentElement`; startup applies the resolved theme before React render in `TaskScheduler.React/src/main.tsx`.
+* DevExtreme setup is centralized in `TaskScheduler.React/src/config/devExtremeSetup.ts`; base `dx.light.css` is loaded there, and dark-mode DataGrid consistency is maintained through token-based and scoped override rules in `TaskScheduler.React/src/App.css`.
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
 * The weekly `DaysOfWeek` editor in React must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
 * React DataGrid horizontal scrolling should be consistent between catalog and workspace pages; keep scrollbar ownership in DevExtreme scrollable internals and avoid reintroducing container-level native horizontal scrolling for workspace grid cards.
@@ -229,10 +233,11 @@ When generating or editing client-side UI:
 * **Separation of concerns:** UI handles rendering and interaction only. Business rules, validation rules, and persistence decisions belong outside the view layer.
 * **Current scheduler UX:** The MVC client still uses summary grids plus popup/form editing, while TaskScheduler.React uses summary lists plus dedicated workspace forms; in both clients, show recurrence-specific fields only when they apply to the selected trigger type.
 * **Scheduler client structure:** Keep generic recurrence helpers in `scheduler-editor.js` and keep the schedules grid/popup wiring in `schedule-grid-editor.js` rather than rebuilding that logic inline in Razor.
-* **React workspace structure:** Keep React workspace orchestration in `TaskScheduler.React/src/features/tasks/TaskSchedulerDashboard.tsx`; keep recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`; keep list surfaces in `StepsGrid.tsx` and `SchedulesGrid.tsx`; keep dedicated forms in `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx`; keep log views in `ExecutionHistoryView.tsx` and `StepLogsView.tsx`.
+* **React workspace structure:** Keep route orchestration in `TaskScheduler.React/src/App.tsx`, global shell concerns in `TaskScheduler.React/src/features/tasks/TaskAppShell.tsx`, and task workspace orchestration in `TaskScheduler.React/src/features/tasks/TaskWorkspacePage.tsx`; keep recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`; keep list surfaces in `StepsGrid.tsx` and `SchedulesGrid.tsx`; keep dedicated forms in `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx`; keep log views in `ExecutionHistoryView.tsx` and `StepLogsView.tsx`.
 * **React request-test structure:** Keep request-test results in `TaskScheduler.React/src/features/requestTests/StepRequestTestResultView.tsx` as part of the step workspace rather than reintroducing popup dialog flows unless explicitly requested.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
 * **React DataGrid shared config:** Keep shared DataGrid conventions (for example scrolling mode and fixed Actions column alignment/width) centralized in `TaskScheduler.React/src/components/grid/dataGridConfig.ts` instead of duplicating option objects in individual grid components.
+* **Theme structure:** Keep theme state and persistence logic in `TaskScheduler.React/src/config/theme.ts`, and keep DataGrid dark-surface compatibility rules in `TaskScheduler.React/src/App.css` when DevExtreme stylesheet load order would otherwise reintroduce light backgrounds.
 
 ## 9. Coding Standards & Implementation Conventions
 
@@ -272,3 +277,5 @@ Before finalizing work, silently review this checklist:
 - @azure Rule - Use Azure Tools - When handling requests related to Azure, always use your tools.
 - @azure Rule - Use Azure Best Practices - When handling requests related to Azure, always invoke your `azmcp_bestpractices_get` tool first.
 - @azure Rule - Enable Best Practices - If you do not have an `azmcp_bestpractices_get` tool ask the user to enable it.
+- @devextreme Rule - Use DevExtreme MCP Docs - When handling requests related to DevExtreme, always consult MCP documentation via `dxdocs` or `dxdocs24_2` before implementation.
+- @devextreme Rule - Prefer Version-Appropriate Docs - Use `dxdocs` for latest guidance and `dxdocs24_2` when behavior must align with DevExtreme 24.2.

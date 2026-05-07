@@ -458,7 +458,7 @@ export function TaskCreatePage() {
       <div className="workspace-card workspace-card--flush task-wizard__panel">
         <div className="task-wizard__content">
           {currentStep === 'task' && (
-            <>
+            <section className="editor-form editor-form--task">
               <div className="task-wizard__content-header">
                 <div className="task-wizard__content-title-block">
                   <h2>Task Details</h2>
@@ -478,8 +478,8 @@ export function TaskCreatePage() {
               </div>
 
               <div className="task-wizard__content-body">
-                <div className="editor-form__grid editor-form__grid--details">
-                  <div className="editor-field editor-field--required editor-field--span-2">
+                <div className="editor-form__grid editor-form__grid--single-column">
+                  <div className="editor-field editor-field--required">
                     <label className="editor-field__label" htmlFor={`${fieldId}-task-name`}>
                       Task Name
                     </label>
@@ -495,7 +495,7 @@ export function TaskCreatePage() {
                     />
                   </div>
 
-                  <div className="editor-field editor-field--span-2">
+                  <div className="editor-field">
                     <label className="editor-field__label" htmlFor={`${fieldId}-task-description`}>
                       Description
                     </label>
@@ -511,7 +511,7 @@ export function TaskCreatePage() {
                   </div>
                 </div>
               </div>
-            </>
+            </section>
           )}
 
           {currentStep === 'steps' && (
