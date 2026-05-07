@@ -5,6 +5,11 @@ export const baseDataGridProps = {
   width: '100%',
   showBorders: true,
   rowAlternationEnabled: true,
+  renderAsync: true,
+  repaintChangesOnly: true,
+  paging: {
+    enabled: false,
+  },
 } as const
 
 export const workspaceDataGridProps = {
@@ -17,7 +22,6 @@ export const workspaceDataGridProps = {
 
 export const catalogDataGridProps = {
   ...baseDataGridProps,
-  repaintChangesOnly: true,
   columnAutoWidth: true,
   columnHidingEnabled: false,
   wordWrapEnabled: true,
@@ -40,6 +44,7 @@ export const fixedActionColumnProps = {
 
 export const standardVirtualScrollingProps = {
   mode: 'virtual' as const,
+  rowRenderingMode: 'virtual' as const,
   columnRenderingMode: 'virtual' as const,
   showScrollbar: 'always' as const,
   useNative: false,

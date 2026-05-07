@@ -134,6 +134,9 @@ Implementation notes:
 * DevExtreme setup is centralized in `TaskScheduler.React/src/config/devExtremeSetup.ts`; base `dx.light.css` is loaded there, and dark-mode DataGrid consistency is maintained through token-based and scoped override rules in `TaskScheduler.React/src/App.css`.
 * DevExtreme time-only editors must keep `dateSerializationFormat: "HH:mm:ss"` to avoid timezone drift.
 * The weekly `DaysOfWeek` editor in React must stay array-backed while bound to `dxTagBox`; converting it to a comma-delimited string inside the editor breaks DevExtreme.
+* Current DataGrid baseline for both `TaskScheduler.Client` and `TaskScheduler.React` uses explicit `remoteOperations: true`, `renderAsync`, `repaintChangesOnly`, and virtual row/column rendering for large datasets.
+* Current operational UX keeps DataGrid paging disabled (`paging.enabled = false`) and does not use pager controls; do not reintroduce pager/page-size selectors unless the user explicitly requests paging UX.
+* For grids with remote operations enabled, columns that depend on `calculateCellValue` (for example recurrence summary columns) should keep sorting/filtering/header filtering disabled.
 * React DataGrid horizontal scrolling should be consistent between catalog and workspace pages; keep scrollbar ownership in DevExtreme scrollable internals and avoid reintroducing container-level native horizontal scrolling for workspace grid cards.
 * React workspace Actions columns should remain fixed-right, compact, and center-aligned (header and row content). Prefer shared column/scroller settings from `TaskScheduler.React/src/components/grid/dataGridConfig.ts` to avoid per-page drift.
 
@@ -236,7 +239,7 @@ When generating or editing client-side UI:
 * **React workspace structure:** Keep route orchestration in `TaskScheduler.React/src/App.tsx`, global shell concerns in `TaskScheduler.React/src/features/tasks/TaskAppShell.tsx`, and task workspace orchestration in `TaskScheduler.React/src/features/tasks/TaskWorkspacePage.tsx`; keep recurrence rules in `TaskScheduler.React/src/features/schedules/scheduleRules.ts`; keep list surfaces in `StepsGrid.tsx` and `SchedulesGrid.tsx`; keep dedicated forms in `TaskEditorForm.tsx`, `StepEditorForm.tsx`, and `ScheduleEditorForm.tsx`; keep log views in `ExecutionHistoryView.tsx` and `StepLogsView.tsx`.
 * **React request-test structure:** Keep request-test results in `TaskScheduler.React/src/features/requestTests/StepRequestTestResultView.tsx` as part of the step workspace rather than reintroducing popup dialog flows unless explicitly requested.
 * **Time-only editors:** Keep DevExtreme time-only editors on `dateSerializationFormat: "HH:mm:ss"` unless the serialization strategy is intentionally changed end-to-end.
-* **React DataGrid shared config:** Keep shared DataGrid conventions (for example scrolling mode and fixed Actions column alignment/width) centralized in `TaskScheduler.React/src/components/grid/dataGridConfig.ts` instead of duplicating option objects in individual grid components.
+* **React DataGrid shared config:** Keep shared DataGrid conventions (for example scrolling mode, fixed Actions column alignment/width, and the current no-pager/no-paging baseline) centralized in `TaskScheduler.React/src/components/grid/dataGridConfig.ts` instead of duplicating option objects in individual grid components.
 * **Theme structure:** Keep theme state and persistence logic in `TaskScheduler.React/src/config/theme.ts`, and keep DataGrid dark-surface compatibility rules in `TaskScheduler.React/src/App.css` when DevExtreme stylesheet load order would otherwise reintroduce light backgrounds.
 
 ## 9. Coding Standards & Implementation Conventions

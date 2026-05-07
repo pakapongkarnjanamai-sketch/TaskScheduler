@@ -116,6 +116,14 @@
                 }
             });
 
+            function createLargeDataVirtualScrolling() {
+                return {
+                    mode: "virtual",
+                    rowRenderingMode: "virtual",
+                    columnRenderingMode: "virtual"
+                };
+            }
+
             var connection = new signalR.HubConnectionBuilder()
                 .withUrl(hubUrl)
                 .withAutomaticReconnect()
@@ -291,8 +299,11 @@
                 showBorders: true,
                 columnAutoWidth: true,
                 rowAlternationEnabled: true,
+                renderAsync: true,
+                repaintChangesOnly: true,
+                paging: { enabled: false },
                 height: "100%",
-                scrolling: { mode: "virtual" },
+                scrolling: createLargeDataVirtualScrolling(),
 
                 searchPanel: {
                     visible: true,
@@ -500,6 +511,10 @@
                         sort: [{ selector: "Order", desc: false }]
                     },
                     remoteOperations: true,
+                    renderAsync: true,
+                    repaintChangesOnly: true,
+                    paging: { enabled: false },
+                    scrolling: createLargeDataVirtualScrolling(),
                     sorting: {
                         mode: "none"
                     },
@@ -715,8 +730,11 @@
                         showBorders: true,
                         columnAutoWidth: true,
                         rowAlternationEnabled: true,
+                        renderAsync: true,
+                        repaintChangesOnly: true,
+                        paging: { enabled: false },
                         height: "100%",
-                scrolling: { mode: "virtual" },
+                        scrolling: createLargeDataVirtualScrolling(),
                         columns: [
                             {
                                 dataField: "StartTime",
@@ -805,9 +823,12 @@
                             showBorders: true,
                             columnAutoWidth: true,
                             rowAlternationEnabled: true,
+                            renderAsync: true,
+                            repaintChangesOnly: true,
+                            paging: { enabled: false },
 
                             height: "100%",
-                            scrolling: { mode: "virtual" },
+                            scrolling: createLargeDataVirtualScrolling(),
 
                             columns: [
                                 {

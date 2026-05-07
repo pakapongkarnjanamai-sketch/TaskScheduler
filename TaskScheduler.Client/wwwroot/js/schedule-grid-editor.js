@@ -131,10 +131,19 @@
                 hoverStateEnabled: true,
                 columnAutoWidth: true,
                 wordWrapEnabled: true,
+                renderAsync: true,
+                repaintChangesOnly: true,
                 noDataText: "No schedules configured yet.",
                 width: "100%",
                 height: "100%",
-                scrolling: { mode: "virtual" },
+                paging: {
+                    enabled: false
+                },
+                scrolling: {
+                    mode: "virtual",
+                    rowRenderingMode: "virtual",
+                    columnRenderingMode: "virtual"
+                },
                 editing: {
                     mode: "popup",
                     allowAdding: true,
