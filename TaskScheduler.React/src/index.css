@@ -1,7 +1,7 @@
 :root {
   font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  color: oklch(24.8% 0.014 232);
-  background: oklch(97.6% 0.004 225);
+  color: var(--ink-strong, oklch(24.8% 0.014 232));
+  background: var(--paper-field, oklch(97.6% 0.004 225));
   font-size: 13px;
   line-height: 1.5;
   font-synthesis: none;
@@ -23,8 +23,8 @@ body,
 }
 
 body {
-  min-width: 360px;
-  background: oklch(97.6% 0.004 225);
+  min-width: 0;
+  background: var(--paper-field, oklch(97.6% 0.004 225));
   font-size: 13px;
   line-height: 1.5;
 }
@@ -40,6 +40,6 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 1px solid oklch(42.6% 0.075 220);
+  outline: 1px solid var(--command-blue, oklch(42.6% 0.075 220));
   outline-offset: 2px;
 }

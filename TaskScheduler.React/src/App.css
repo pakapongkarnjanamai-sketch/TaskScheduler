@@ -1306,6 +1306,11 @@ a:focus-visible,
     justify-content: center;
   }
 
+  .task-layout__nav-item {
+    min-height: var(--touch-control-height);
+    padding: 12px;
+  }
+
   .task-layout__topbar,
   .task-layout__surface {
     padding-left: var(--gap);

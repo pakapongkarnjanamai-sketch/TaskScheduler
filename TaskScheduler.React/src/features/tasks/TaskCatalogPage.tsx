@@ -19,6 +19,29 @@ type PushableTaskStore = {
   push: (changes: Array<{ type: 'update'; key: number; data: Partial<TaskSummary> }>) => void
 }
 
+function getFilterEditorAriaLabel(dataField?: string) {
+  switch (dataField) {
+    case 'Id':
+      return 'Filter by task ID'
+    case 'IsActive':
+      return 'Filter by enabled status'
+    case 'Name':
+      return 'Filter by task name'
+    case 'Description':
+      return 'Filter by task description'
+    case 'LastStatus':
+      return 'Filter by last status'
+    case 'LastExecutionTime':
+      return 'Filter by last run time'
+    case 'NextExecutionTime':
+      return 'Filter by next run time'
+    case 'UpdatedAt':
+      return 'Filter by last updated time'
+    default:
+      return 'Filter tasks'
+  }
+}
+
 function isPushableTaskStore(store: unknown): store is PushableTaskStore {
   return Boolean(store && typeof store === 'object' && 'push' in store && typeof store.push === 'function')
 }
@@ -28,6 +51,10 @@ export function TaskCatalogPage() {
   const navigate = useNavigate()
   const tasksStore = useMemo(() => createAdminStore('Tasks'), [])
   const { lastUpdate } = useTaskUpdatesContext()
+
+  function openTaskWorkspace(task: TaskSummary) {
+    navigate(taskPaths.overview(task.Id))
+  }
 
   async function refreshTasks() {
     await gridRef.current?.instance().refresh()
@@ -74,7 +101,20 @@ export function TaskCatalogPage() {
                 return
               }
 
-              navigate(taskPaths.overview((event.data as TaskSummary).Id))
+              openTaskWorkspace(event.data as TaskSummary)
+            }}
+            onEditorPreparing={(event) => {
+              if (event.parentType !== 'filterRow') {
+                return
+              }
+
+              event.editorOptions = {
+                ...event.editorOptions,
+                inputAttr: {
+                  ...(event.editorOptions?.inputAttr ?? {}),
+                  'aria-label': getFilterEditorAriaLabel(event.dataField),
+                },
+              }
             }}
           >
             <Selection mode="single" />
@@ -95,6 +135,37 @@ export function TaskCatalogPage() {
             <Column dataField="LastExecutionTime" caption="Last Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
             <Column dataField="NextExecutionTime" caption="Next Run" dataType="datetime" format="dd/MM/yyyy HH:mm" width={150} allowEditing={false} />
             <Column dataField="UpdatedAt" caption="Last Updated" dataType="datetime" format="dd/MM/yyyy HH:mm" width={160} allowEditing={false} />
+            <Column
+              caption="Actions"
+              width={120}
+              allowSorting={false}
+              allowFiltering={false}
+              allowHeaderFiltering={false}
+              cellRender={(cell) => {
+                const task = cell.data as TaskSummary
+
+                if (!task) {
+                  return null
+                }
+
+                return (
+                  <div className="row-action-stack row-action-stack--right">
+                    <div className="row-action-group">
+                      <button
+                        type="button"
+                        className="row-action"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          openTaskWorkspace(task)
+                        }}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </div>
+                )
+              }}
+            />
           </DataGrid>
         </div>
       </section>

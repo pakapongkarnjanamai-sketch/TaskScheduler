@@ -18,6 +18,7 @@ export const catalogDataGridProps = {
   ...baseDataGridProps,
   repaintChangesOnly: true,
   columnAutoWidth: true,
+  columnHidingEnabled: false,
   wordWrapEnabled: true,
   remoteOperations: true,
   height: CATALOG_GRID_HEIGHT,
