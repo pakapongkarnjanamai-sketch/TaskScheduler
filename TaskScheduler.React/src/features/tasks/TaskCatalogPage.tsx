@@ -10,10 +10,13 @@ import { useNavigate } from 'react-router-dom'
 import { createAdminStore } from '../../api/adminApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
 import { catalogDataGridProps, standardVirtualScrollingProps } from '../../components/grid/dataGridConfig'
+import { ensureDevExtremeConfigured } from '../../config/devExtremeSetup'
 import { StatusText } from '../../components/StatusText'
 import type { TaskSummary } from '../../types/entities'
 import { TaskLayoutShell } from './TaskLayoutShell'
 import { taskPaths } from './taskRoutes'
+
+ensureDevExtremeConfigured()
 
 type PushableTaskStore = {
   push: (changes: Array<{ type: 'update'; key: number; data: Partial<TaskSummary> }>) => void

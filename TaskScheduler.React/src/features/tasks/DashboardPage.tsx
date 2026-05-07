@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { loadDashboardSummary } from '../../api/adminApi'
+import { loadDashboardSummary } from '../../api/dashboardApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
 import { StatusText } from '../../components/StatusText'
 import type { DashboardScheduleQueueItem, DashboardSummary } from '../../types/entities'
@@ -111,8 +111,21 @@ export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const isFetchingRef = useRef(false)
+  const refreshTimeoutRef = useRef<number | null>(null)
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (options?: { showLoading?: boolean }) => {
+    if (isFetchingRef.current) {
+      return
+    }
+
+    isFetchingRef.current = true
+
+    if (options?.showLoading) {
+      setIsLoading(true)
+      setErrorMessage(null)
+    }
+
     try {
       const data = await loadDashboardSummary()
       setSummary(data)
@@ -121,19 +134,26 @@ export function DashboardPage() {
       const message = error instanceof Error ? error.message : 'Unable to load dashboard data.'
       setErrorMessage(message)
     } finally {
-      setIsLoading(false)
+      isFetchingRef.current = false
+
+      if (options?.showLoading) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
   const refreshDashboard = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage(null)
-    await loadDashboard()
+    await loadDashboard({ showLoading: true })
   }, [loadDashboard])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDashboard()
+    const initialLoadTimer = window.setTimeout(() => {
+      void loadDashboard({ showLoading: true })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(initialLoadTimer)
+    }
   }, [loadDashboard])
 
   useEffect(() => {
@@ -141,9 +161,24 @@ export function DashboardPage() {
       return
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDashboard()
+    if (refreshTimeoutRef.current) {
+      window.clearTimeout(refreshTimeoutRef.current)
+    }
+
+    // Coalesce rapid-fire task updates into one background refresh.
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      refreshTimeoutRef.current = null
+      void loadDashboard()
+    }, 2500)
   }, [lastUpdate, loadDashboard])
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const sidebar = useMemo(() => ({
     label: 'Main Navigation',
@@ -217,6 +252,7 @@ export function DashboardPage() {
                           <button
                             type="button"
                             className="row-action"
+                            aria-label={`Open ${item.taskName} task from schedule ${item.scheduleName}`}
                             onClick={() => navigate(taskPaths.overview(item.taskId))}
                           >
                             Open Task
@@ -267,26 +303,27 @@ export function DashboardPage() {
                   <table className="dashboard-table">
                     <thead>
                       <tr>
-                        <th scope="col">Task</th>
-                        <th scope="col">Signals</th>
-                        <th scope="col">Last Status</th>
-                        <th scope="col">Next Run</th>
-                        <th scope="col">Action</th>
+                        <th id="dashboard-abnormal-col-task" scope="col">Task</th>
+                        <th id="dashboard-abnormal-col-signals" scope="col">Signals</th>
+                        <th id="dashboard-abnormal-col-last-status" scope="col">Last Status</th>
+                        <th id="dashboard-abnormal-col-next-run" scope="col">Next Run</th>
+                        <th id="dashboard-abnormal-col-action" scope="col">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {summary.abnormalTasks.map((task) => (
                         <tr key={task.taskId}>
-                          <td>{task.taskName}</td>
-                          <td>{task.signals.join(', ')}</td>
-                          <td>
+                          <td data-label="Task" headers="dashboard-abnormal-col-task">{task.taskName}</td>
+                          <td data-label="Signals" headers="dashboard-abnormal-col-signals">{task.signals.join(', ')}</td>
+                          <td data-label="Last Status" headers="dashboard-abnormal-col-last-status">
                             <StatusText value={task.lastStatus} />
                           </td>
-                          <td>{toDateTimeLabel(task.nextExecutionTime)}</td>
-                          <td>
+                          <td data-label="Next Run" headers="dashboard-abnormal-col-next-run">{toDateTimeLabel(task.nextExecutionTime)}</td>
+                          <td data-label="Action" headers="dashboard-abnormal-col-action">
                             <button
                               type="button"
                               className="row-action"
+                              aria-label={`Open ${task.taskName} task`}
                               onClick={() => navigate(taskPaths.overview(task.taskId))}
                             >
                               Open

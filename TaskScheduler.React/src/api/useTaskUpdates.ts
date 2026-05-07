@@ -8,12 +8,16 @@ export type TaskHubConnectionStatus = 'Connected' | 'Reconnecting' | 'Disconnect
 
 // Delays used both for initial-connect retry and for withAutomaticReconnect
 const retryDelaysMs = [1000, 3000, 5000, 10000, 30000]
+const connectErrorLogThrottleMs = 30000
 
 export function useTaskUpdates(onTaskUpdate: (taskId: number, payload: TaskUpdatePayload) => void) {
   const [connectionStatus, setConnectionStatus] = useState<TaskHubConnectionStatus>('Disconnected')
-    // Keep the callback in a ref so the effect never needs to re-run when it changes
-    const onTaskUpdateRef = useRef(onTaskUpdate)
-    useEffect(() => { onTaskUpdateRef.current = onTaskUpdate }, [onTaskUpdate])
+  const lastConnectErrorLoggedAtRef = useRef(0)
+  const onTaskUpdateRef = useRef(onTaskUpdate)
+
+  useEffect(() => {
+    onTaskUpdateRef.current = onTaskUpdate
+  }, [onTaskUpdate])
 
   useEffect(() => {
     let disposed = false
@@ -81,7 +85,14 @@ export function useTaskUpdates(onTaskUpdate: (taskId: number, payload: TaskUpdat
         }
       } catch (error) {
         if (!disposed) {
-          console.error('Unable to connect to task hub.', error)
+          setConnectionStatus('Disconnected')
+
+          const now = Date.now()
+          if (now - lastConnectErrorLoggedAtRef.current >= connectErrorLogThrottleMs) {
+            lastConnectErrorLoggedAtRef.current = now
+            console.warn('Unable to connect to task hub, retrying with backoff.', error)
+          }
+
           scheduleInitialConnect()
         }
       }

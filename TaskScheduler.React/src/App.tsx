@@ -1,8 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './App.css'
-import config from 'devextreme/core/config'
-import { licenseKey } from './devextreme-license'
 import { TaskUpdatesProvider } from './api/TaskUpdatesProvider'
 import { TaskAppShell } from './features/tasks/TaskAppShell'
 import { taskPaths } from './features/tasks/taskRoutes'
@@ -27,8 +25,12 @@ const TaskWorkspacePage = lazy(async () => {
   return { default: module.TaskWorkspacePage }
 })
 
-if (licenseKey) {
-  config({ licenseKey })
+function RouteLoadingFallback() {
+  return (
+    <div className="route-loading" role="status" aria-live="polite" aria-atomic="true">
+      <p>Loading page...</p>
+    </div>
+  )
 }
 
 function normalizeRouterBasePath(value: string | undefined) {
@@ -45,6 +47,7 @@ function normalizeRouterBasePath(value: string | undefined) {
 }
 
 const routerBasePath = normalizeRouterBasePath(import.meta.env.VITE_TASKSCHEDULER_APP_BASE_PATH)
+const routeLoadingFallback = <RouteLoadingFallback />
 
 function App() {
   return (
@@ -56,7 +59,7 @@ function App() {
             <Route
               path="/dashboard"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <DashboardPage />
                 </Suspense>
               )}
@@ -64,7 +67,7 @@ function App() {
             <Route
               path="/tasks"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskCatalogPage />
                 </Suspense>
               )}
@@ -72,7 +75,7 @@ function App() {
             <Route
               path="/tasks/new"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskCreatePage />
                 </Suspense>
               )}
@@ -81,7 +84,7 @@ function App() {
             <Route
               path="/tasks/:taskId/overview"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="overview" />
                 </Suspense>
               )}
@@ -89,7 +92,7 @@ function App() {
             <Route
               path="/tasks/:taskId/edit"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="task-editor" />
                 </Suspense>
               )}
@@ -97,7 +100,7 @@ function App() {
             <Route
               path="/tasks/:taskId/steps"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="steps" />
                 </Suspense>
               )}
@@ -105,7 +108,7 @@ function App() {
             <Route
               path="/tasks/:taskId/steps/new"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="step-editor" />
                 </Suspense>
               )}
@@ -113,7 +116,7 @@ function App() {
             <Route
               path="/tasks/:taskId/steps/:stepId/edit"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="step-editor" />
                 </Suspense>
               )}
@@ -121,7 +124,7 @@ function App() {
             <Route
               path="/tasks/:taskId/schedules"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="schedules" />
                 </Suspense>
               )}
@@ -129,7 +132,7 @@ function App() {
             <Route
               path="/tasks/:taskId/schedules/new"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="schedule-editor" />
                 </Suspense>
               )}
@@ -137,7 +140,7 @@ function App() {
             <Route
               path="/tasks/:taskId/schedules/:scheduleId/edit"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="schedule-editor" />
                 </Suspense>
               )}
@@ -145,7 +148,7 @@ function App() {
             <Route
               path="/tasks/:taskId/history"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="history" />
                 </Suspense>
               )}
@@ -153,7 +156,7 @@ function App() {
             <Route
               path="/tasks/:taskId/step-logs"
               element={(
-                <Suspense fallback={null}>
+                <Suspense fallback={routeLoadingFallback}>
                   <TaskWorkspacePage view="step-logs" />
                 </Suspense>
               )}

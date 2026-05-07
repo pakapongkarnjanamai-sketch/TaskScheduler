@@ -1,6 +1,8 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 
+const compactSidebarMediaQuery = '(max-width: 720px)'
+
 export type TaskShellBreadcrumb = {
   label: string
   to?: string
@@ -48,18 +50,23 @@ export function TaskLayoutShell({
 }: TaskLayoutShellProps) {
   const navId = useId()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isCompactViewport, setIsCompactViewport] = useState(false)
   const hasSidebar = Boolean(sidebar)
   const hasBreadcrumbs = Boolean(breadcrumbs && breadcrumbs.length > 0)
   const shouldShowTopBar = showTopBar ?? hasBreadcrumbs
+  const isSidebarCollapsed = hasSidebar && isCompactViewport && !isSidebarOpen
+  const shouldShowCompactMenuButton = hasSidebar && isCompactViewport
+  const menuButtonLabel = isSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'
 
   useEffect(() => {
     if (!hasSidebar) {
       return
     }
 
-    const mediaQuery = window.matchMedia('(max-width: 960px)')
+    const mediaQuery = window.matchMedia(compactSidebarMediaQuery)
 
     const syncSidebarState = (isCompact: boolean) => {
+      setIsCompactViewport(isCompact)
       setIsSidebarOpen(!isCompact)
     }
 
@@ -80,9 +87,13 @@ export function TaskLayoutShell({
       return
     }
 
-    if (window.matchMedia('(max-width: 960px)').matches) {
+    if (window.matchMedia(compactSidebarMediaQuery).matches) {
       setIsSidebarOpen(false)
     }
+  }
+
+  function toggleSidebarMenu() {
+    setIsSidebarOpen((currentValue) => !currentValue)
   }
 
   function renderNavItem(item: TaskShellNavItem) {
@@ -147,12 +158,16 @@ export function TaskLayoutShell({
       <div className={[
         'task-layout',
         hasSidebar ? '' : 'task-layout--no-sidebar',
-        hasSidebar && !isSidebarOpen ? 'task-layout--sidebar-collapsed' : '',
+        isSidebarCollapsed ? 'task-layout--sidebar-collapsed' : '',
       ].filter(Boolean).join(' ')}>
         {hasSidebar ? (
-          <aside className="task-layout__sidebar" aria-label={sidebar!.ariaLabel}>
+          <aside
+            className="task-layout__sidebar"
+            aria-label={sidebar!.ariaLabel}
+            aria-hidden={isSidebarCollapsed ? true : undefined}
+          >
             <div className="task-layout__sidebar-title-block">
-              <h1>{sidebar!.label}</h1>
+              <h2>{sidebar!.label}</h2>
               {sidebar!.meta ? <p>{sidebar!.meta}</p> : null}
             </div>
 
@@ -166,15 +181,14 @@ export function TaskLayoutShell({
           {shouldShowTopBar ? (
             <header className="task-layout__topbar">
               <div className="task-layout__topbar-leading">
-                {hasSidebar ? (
+                {shouldShowCompactMenuButton ? (
                   <button
                     type="button"
                     className="task-layout__menu-button"
-                    onClick={() => {
-                      setIsSidebarOpen((currentValue) => !currentValue)
-                    }}
+                    onClick={toggleSidebarMenu}
                     aria-expanded={isSidebarOpen}
                     aria-controls={navId}
+                    aria-label={menuButtonLabel}
                   >
                     Menu
                   </button>
@@ -202,8 +216,20 @@ export function TaskLayoutShell({
 
           <div className="task-layout__surface">
             <div className="task-layout__header">
+              {shouldShowCompactMenuButton && !shouldShowTopBar ? (
+                <button
+                  type="button"
+                  className="task-layout__menu-button task-layout__menu-button--inline"
+                  onClick={toggleSidebarMenu}
+                  aria-expanded={isSidebarOpen}
+                  aria-controls={navId}
+                  aria-label={menuButtonLabel}
+                >
+                  Menu
+                </button>
+              ) : null}
               <div className="task-layout__title-block">
-                <h2>{title}</h2>
+                <h1>{title}</h1>
                 {description ? <p>{description}</p> : null}
               </div>
               {headerContent}

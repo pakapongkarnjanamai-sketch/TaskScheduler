@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { loadEntityById } from '../../api/adminApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
+import { ensureDevExtremeConfigured } from '../../config/devExtremeSetup'
 import { ExecutionHistoryView } from '../logs/ExecutionHistoryView'
 import { StepLogsView } from '../logs/StepLogsView'
 import { ScheduleEditorForm } from '../schedules/ScheduleEditorForm'
@@ -12,6 +13,8 @@ import type { Schedule, Step, TaskSummary } from '../../types/entities'
 import { TaskLayoutShell, type TaskShellBreadcrumb, type TaskShellNavItem } from './TaskLayoutShell'
 import { TaskEditorForm } from './TaskEditorForm'
 import { taskPaths } from './taskRoutes'
+
+ensureDevExtremeConfigured()
 
 export type TaskWorkspaceView =
   | 'overview'

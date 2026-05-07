@@ -20,36 +20,61 @@ public sealed class DashboardQueryService
     {
         var now = _dateTime.Now;
 
-        var tasks = await _context.Tasks
+        var taskBases = await _context.Tasks
             .AsNoTracking()
-            .Select(task => new TaskSnapshot
+            .Select(task => new TaskBaseSnapshot
             {
                 Id = task.Id,
                 Name = task.Name,
                 IsActive = task.IsActive,
-                LastStatus = _context.TaskExecutionLogs
-                    .Where(log => log.TaskId == task.Id)
-                    .OrderByDescending(log => log.StartTime)
-                    .Select(log => log.Status)
-                    .FirstOrDefault(),
-                LastExecutionTime = _context.TaskExecutionLogs
-                    .Where(log => log.TaskId == task.Id)
-                    .OrderByDescending(log => log.StartTime)
-                    .Select(log => (DateTime?)log.StartTime)
-                    .FirstOrDefault(),
-                NextExecutionTime = task.Triggers
-                    .Where(schedule => schedule.IsActive)
-                    .OrderBy(schedule => schedule.NextExecutionTime)
-                    .Select(schedule => schedule.NextExecutionTime)
-                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
-        var taskIdsWithSchedules = await _context.Schedules
+        var latestTaskLogs = await _context.TaskExecutionLogs
             .AsNoTracking()
-            .Select(schedule => schedule.TaskId)
-            .Distinct()
-            .ToHashSetAsync(cancellationToken);
+            .GroupBy(log => log.TaskId)
+            .Select(group => group
+                .OrderByDescending(log => log.StartTime)
+                .Select(log => new LatestTaskLogSnapshot
+                {
+                    TaskId = log.TaskId,
+                    Status = log.Status,
+                    StartTime = (DateTime?)log.StartTime,
+                })
+                .First())
+            .ToListAsync(cancellationToken);
+
+        var nextTaskExecutions = await _context.Schedules
+            .AsNoTracking()
+            .Where(schedule => schedule.IsActive)
+            .GroupBy(schedule => schedule.TaskId)
+            .Select(group => new NextTaskExecutionSnapshot
+            {
+                TaskId = group.Key,
+                NextExecutionTime = group.Min(schedule => schedule.NextExecutionTime),
+            })
+            .ToListAsync(cancellationToken);
+
+        var latestTaskLogByTaskId = latestTaskLogs.ToDictionary(log => log.TaskId);
+        var nextTaskExecutionByTaskId = nextTaskExecutions.ToDictionary(item => item.TaskId);
+
+        var tasks = taskBases
+            .Select(taskBase =>
+            {
+                latestTaskLogByTaskId.TryGetValue(taskBase.Id, out var latestLog);
+                nextTaskExecutionByTaskId.TryGetValue(taskBase.Id, out var nextExecution);
+
+                return new TaskSnapshot
+                {
+                    Id = taskBase.Id,
+                    Name = taskBase.Name,
+                    IsActive = taskBase.IsActive,
+                    LastStatus = latestLog?.Status,
+                    LastExecutionTime = latestLog?.StartTime,
+                    NextExecutionTime = nextExecution?.NextExecutionTime,
+                };
+            })
+            .ToList();
 
         var tasksById = tasks.ToDictionary(task => task.Id);
 
@@ -70,6 +95,10 @@ public sealed class DashboardQueryService
                 TaskId = schedule.TaskId,
             })
             .ToListAsync(cancellationToken);
+
+        var taskIdsWithSchedules = scheduleQueue
+            .Select(schedule => schedule.TaskId)
+            .ToHashSet();
 
         var enrichedQueue = scheduleQueue
             .Select(item =>
@@ -180,6 +209,31 @@ public sealed class DashboardQueryService
         public string? LastStatus { get; init; }
 
         public DateTime? LastExecutionTime { get; init; }
+
+        public DateTime? NextExecutionTime { get; init; }
+    }
+
+    private sealed class TaskBaseSnapshot
+    {
+        public int Id { get; init; }
+
+        public string Name { get; init; } = string.Empty;
+
+        public bool IsActive { get; init; }
+    }
+
+    private sealed class LatestTaskLogSnapshot
+    {
+        public int TaskId { get; init; }
+
+        public string? Status { get; init; }
+
+        public DateTime? StartTime { get; init; }
+    }
+
+    private sealed class NextTaskExecutionSnapshot
+    {
+        public int TaskId { get; init; }
 
         public DateTime? NextExecutionTime { get; init; }
     }

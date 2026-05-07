@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import notify from 'devextreme/ui/notify'
 import { useNavigate } from 'react-router-dom'
 import { createEntity } from '../../api/adminApi'
+import { ensureDevExtremeConfigured } from '../../config/devExtremeSetup'
 import type { Schedule, ScheduleTriggerType, Step, TaskSummary } from '../../types/entities'
 import {
   applyTriggerDefaults,
@@ -16,6 +17,8 @@ import {
 } from '../schedules/scheduleRules'
 import { TaskLayoutShell } from './TaskLayoutShell'
 import { taskPaths } from './taskRoutes'
+
+ensureDevExtremeConfigured()
 
 type WizardStepKey = 'task' | 'steps' | 'schedules' | 'review'
 
