@@ -38,6 +38,7 @@ export function ScheduleEditorForm({ task, schedule, onSaved }: ScheduleEditorFo
   const [formData, setFormData] = useState<Schedule>(() => normalizeSchedule(task.Id, schedule))
   const fieldId = useId()
   const isEdit = formData.Id > 0
+  const formId = 'schedule-editor-form'
   const rule = getTriggerRule(formData.TriggerType)
   const selectedDays = parseDaysOfWeek(formData.DaysOfWeek)
 
@@ -88,14 +89,7 @@ export function ScheduleEditorForm({ task, schedule, onSaved }: ScheduleEditorFo
 
   return (
     <section className="workspace-view">
-      <form className="editor-form editor-form--wide" onSubmit={handleSubmit}>
-        <div className="workspace-view__header workspace-view__header--actions-only">
-          <div className="workspace-view__actions">
-            <button type="submit" className="row-action row-action--primary">
-              Save Schedule
-            </button>
-          </div>
-        </div>
+      <form id={formId} className="editor-form editor-form--wide" onSubmit={handleSubmit}>
 
         <section className="workspace-card editor-form__section editor-form__section--identity">
           <div className="editor-form__section-header">

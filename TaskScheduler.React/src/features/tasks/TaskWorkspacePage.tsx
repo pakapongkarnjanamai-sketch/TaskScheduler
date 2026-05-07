@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { loadEntityById } from '../../api/adminApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
-import { StatusText } from '../../components/StatusText'
 import { ExecutionHistoryView } from '../logs/ExecutionHistoryView'
 import { StepLogsView } from '../logs/StepLogsView'
 import { ScheduleEditorForm } from '../schedules/ScheduleEditorForm'
@@ -288,11 +287,33 @@ export function TaskWorkspacePage({ view }: TaskWorkspacePageProps) {
       breadcrumbs={shellBreadcrumbs}
       title={currentTask?.Name ?? 'Task Workspace'}
       description={currentTask ? workspaceDescriptionByView[view] : 'Loading task context.'}
-      topBarContent={currentTask ? (
-        <div className="status-row">
-          <span>Status</span>
-          <StatusText value={currentTask.LastStatus || 'Not run'} />
-        </div>
+      headerContent={currentTask ? (
+        view === 'task-editor' ? (
+          <button type="submit" form="task-editor-form" className="row-action row-action--primary">
+            Save Task
+          </button>
+        ) : view === 'steps' ? (
+          <button type="button" className="row-action row-action--primary" onClick={() => navigate(taskPaths.newStep(currentTask.Id))}>
+            Add Step
+          </button>
+        ) : view === 'schedules' ? (
+          <button type="button" className="row-action row-action--primary" onClick={() => navigate(taskPaths.newSchedule(currentTask.Id))}>
+            Add Schedule
+          </button>
+        ) : view === 'step-editor' ? (
+          <div className="workspace-view__actions workspace-view__actions--spread">
+            <button type="submit" form="step-editor-form" value="test-request" className="row-action">
+              Test Request
+            </button>
+            <button type="submit" form="step-editor-form" className="row-action row-action--primary">
+              Save Step
+            </button>
+          </div>
+        ) : view === 'schedule-editor' ? (
+          <button type="submit" form="schedule-editor-form" className="row-action row-action--primary">
+            Save Schedule
+          </button>
+        ) : undefined
       ) : undefined}
     >
         {isLoading ? (

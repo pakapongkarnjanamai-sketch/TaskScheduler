@@ -36,6 +36,7 @@
   z-index: 20;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: var(--top-header-height);
   padding: 0 var(--section);
   border-bottom: 1px solid var(--grid-line);
@@ -53,6 +54,28 @@
 
 .app-shell__home-link:hover {
   color: var(--command-blue);
+}
+
+.app-shell__header-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.app-shell__connection-status {
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.app-shell__connection-status--reconnecting {
+  color: var(--command-blue);
+}
+
+.app-shell__connection-status--disconnected {
+  color: var(--fault-red);
 }
 
 .app-shell__body--shell {
@@ -99,6 +122,7 @@
   padding: var(--block);
   border-right: 1px solid var(--grid-line);
   background: var(--panel-plane);
+  align-self: stretch;
 }
 
 .task-layout__sidebar-title-block {
@@ -125,7 +149,6 @@
 
 .task-layout__sidebar-title-block p,
 .task-layout__title-block p,
-.task-layout__nav-meta,
 .task-layout__breadcrumb-item,
 .task-layout__breadcrumb-link,
 .task-layout__breadcrumb-current,
@@ -214,8 +237,6 @@
 }
 
 .task-layout__topbar-leading,
-.task-layout__topbar-actions,
-.task-layout__header-slot,
 .task-layout__breadcrumbs {
   display: flex;
   align-items: center;
@@ -266,6 +287,7 @@
 .task-layout__header {
   padding-bottom: var(--gap);
   border-bottom: 1px solid var(--grid-line);
+  flex-wrap: wrap;
 }
 
 .task-layout__content {
@@ -712,16 +734,14 @@
 
 .task-wizard__content-header,
 .task-wizard__inline-header,
-.task-wizard__summary-header,
-.task-wizard__footer {
+.task-wizard__summary-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--gap);
 }
 
-.task-wizard__content-header,
-.task-wizard__footer {
+.task-wizard__content-header {
   padding-bottom: var(--gap);
   border-bottom: 1px solid var(--grid-line);
 }
@@ -744,7 +764,6 @@
 .task-wizard__content-title-block p,
 .task-wizard__inline-title-block p,
 .task-wizard__summary-empty,
-.task-wizard__footer-note,
 .task-wizard__empty p {
   margin: 0;
   color: var(--ink-muted);
@@ -788,16 +807,11 @@
   gap: 4px;
 }
 
-.task-wizard__inline-actions,
-.task-wizard__footer-actions {
+.task-wizard__inline-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.task-wizard__footer-note {
-  max-width: 58ch;
 }
 
 .task-wizard__summary {
@@ -884,8 +898,7 @@
 .workspace-view__actions,
 .workspace-view__actions--spread,
 .workspace-state__actions,
-.row-action-group,
-.status-row {
+.row-action-group {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -894,13 +907,6 @@
 
 .workspace-view__actions--spread {
   justify-content: flex-end;
-}
-
-.status-row span {
-  color: var(--ink-muted);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
 }
 
 .summary-grid,
@@ -1201,8 +1207,7 @@ a:focus-visible,
   .editor-form__section-header,
   .task-wizard__content-header,
   .task-wizard__inline-header,
-  .task-wizard__summary-header,
-  .task-wizard__footer {
+  .task-wizard__summary-header {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -1267,6 +1272,9 @@ a:focus-visible,
     transform: translateX(0);
     transition: transform 180ms ease-out;
     box-shadow: none;
+    height: auto;
+    max-height: none;
+    align-self: auto;
   }
 
   .task-layout--sidebar-collapsed .task-layout__sidebar {
@@ -1292,8 +1300,7 @@ a:focus-visible,
 
   .workspace-state__actions,
   .workspace-view__actions,
-  .row-action-group,
-  .task-wizard__footer-actions {
+  .row-action-group {
     width: 100%;
   }
 
@@ -1334,4 +1341,27 @@ a:focus-visible,
   .dx-datagrid-search-panel {
     width: 100% !important;
   }
+}
+
+/* Restrained DevExtreme toast notifications */
+.dx-toast-content {
+  border-radius: var(--radius-control) !important;
+  max-width: min(400px, calc(100vw - 32px)) !important;
+  min-width: 220px !important;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dx-toast-message {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.dx-toast-error .dx-toast-content {
+  background-color: var(--fault-red) !important;
+}
+
+.dx-toast-success .dx-toast-content {
+  background-color: var(--confirm-green) !important;
 }

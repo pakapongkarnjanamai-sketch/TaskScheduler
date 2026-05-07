@@ -28,7 +28,6 @@ type TaskLayoutShellProps = {
   breadcrumbs?: TaskShellBreadcrumb[]
   title: string
   description?: string
-  topBarContent?: ReactNode
   showTopBar?: boolean
   headerContent?: ReactNode
   pageClassName?: string
@@ -41,7 +40,6 @@ export function TaskLayoutShell({
   breadcrumbs,
   title,
   description,
-  topBarContent,
   showTopBar,
   headerContent,
   pageClassName,
@@ -52,7 +50,7 @@ export function TaskLayoutShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const hasSidebar = Boolean(sidebar)
   const hasBreadcrumbs = Boolean(breadcrumbs && breadcrumbs.length > 0)
-  const shouldShowTopBar = showTopBar ?? (hasBreadcrumbs || Boolean(topBarContent))
+  const shouldShowTopBar = showTopBar ?? hasBreadcrumbs
 
   useEffect(() => {
     if (!hasSidebar) {
@@ -99,7 +97,6 @@ export function TaskLayoutShell({
         {item.leading ? <span className="task-layout__nav-leading">{item.leading}</span> : null}
         <span className="task-layout__nav-copy">
           <span className="task-layout__nav-label">{item.label}</span>
-          {item.meta ? <span className="task-layout__nav-meta">{item.meta}</span> : null}
         </span>
       </>
     )
@@ -200,8 +197,6 @@ export function TaskLayoutShell({
                   </nav>
                 ) : null}
               </div>
-
-              {topBarContent ? <div className="task-layout__topbar-actions">{topBarContent}</div> : <div />}
             </header>
           ) : null}
 
@@ -211,7 +206,7 @@ export function TaskLayoutShell({
                 <h2>{title}</h2>
                 {description ? <p>{description}</p> : null}
               </div>
-              {headerContent ? <div className="task-layout__header-slot">{headerContent}</div> : null}
+              {headerContent}
             </div>
 
             <div className={[ 'task-layout__content', contentClassName ?? '' ].filter(Boolean).join(' ')}>

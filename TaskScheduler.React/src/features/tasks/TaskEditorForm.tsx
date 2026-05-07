@@ -24,6 +24,7 @@ export function TaskEditorForm({ task, onSaved }: TaskEditorFormProps) {
   const [formData, setFormData] = useState<TaskDraft>(() => createTaskDraft(task))
   const fieldId = useId()
   const isEdit = formData.Id > 0
+  const formId = 'task-editor-form'
 
   async function saveTask() {
     const name = formData.Name.trim()
@@ -57,14 +58,7 @@ export function TaskEditorForm({ task, onSaved }: TaskEditorFormProps) {
 
   return (
     <section className="workspace-view">
-      <form className="editor-form editor-form--task" onSubmit={handleSubmit}>
-        <div className="workspace-view__header workspace-view__header--actions-only">
-          <div className="workspace-view__actions">
-            <button type="submit" className="row-action row-action--primary">
-              Save Task
-            </button>
-          </div>
-        </div>
+      <form id={formId} className="editor-form editor-form--task" onSubmit={handleSubmit}>
 
         <section className="workspace-card editor-form__section editor-form__section--identity">
           <div className="editor-form__section-header">

@@ -72,14 +72,6 @@ export function StepsGrid({ taskId, onCreate, onEdit }: StepsGridProps) {
 
   return (
     <section className="workspace-view">
-      <div className="workspace-view__header workspace-view__header--actions-only">
-        <div className="workspace-view__actions">
-          <button type="button" className="row-action row-action--primary" onClick={onCreate}>
-            Add Step
-          </button>
-        </div>
-      </div>
-
       <div className="workspace-card workspace-card--flush">
         <DataGrid
           ref={gridRef}

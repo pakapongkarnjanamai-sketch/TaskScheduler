@@ -382,10 +382,72 @@ export function TaskCreatePage() {
         : [{ label: 'Tasks', to: taskPaths.catalog }, { label: 'Create Task' }, { label: wizardSteps[currentIndex].label }]}
       title="Create Task"
       description="Set the task identity now, then add steps and schedules only when they are ready."
-      topBarContent={(
-        <div className="status-row">
-          <span>Progress</span>
-          <strong className="task-layout__topbar-value">{completedSteps}/{wizardSteps.length} completed</strong>
+      headerContent={(
+        <div className="workspace-view__actions workspace-view__actions--spread">
+          {currentStep !== 'task' && (
+            <button
+              type="button"
+              className="row-action"
+              onClick={() => {
+                if (currentStep === 'steps') {
+                  goToIndex(0)
+                  return
+                }
+
+                if (currentStep === 'schedules') {
+                  goToIndex(1)
+                  return
+                }
+
+                goToIndex(2)
+              }}
+              disabled={isSubmitting}
+            >
+              Back
+            </button>
+          )}
+          {currentStep === 'task' && (
+            <button type="button" className="row-action row-action--primary" onClick={handleTaskNext}>
+              Next
+            </button>
+          )}
+          {currentStep === 'steps' && (stepDrafts.length === 0 ? (
+            <button
+              type="button"
+              className="row-action row-action--primary"
+              onClick={() => {
+                setStepsSkipped(true)
+                unlockAndGo(2)
+              }}
+            >
+              Skip for Now
+            </button>
+          ) : (
+            <button type="button" className="row-action row-action--primary" onClick={handleStepsNext}>
+              Next
+            </button>
+          ))}
+          {currentStep === 'schedules' && (scheduleDrafts.length === 0 ? (
+            <button
+              type="button"
+              className="row-action row-action--primary"
+              onClick={() => {
+                setSchedulesSkipped(true)
+                unlockAndGo(3)
+              }}
+            >
+              Skip for Now
+            </button>
+          ) : (
+            <button type="button" className="row-action row-action--primary" onClick={handleSchedulesNext}>
+              Next
+            </button>
+          ))}
+          {currentStep === 'review' && (
+            <button type="button" className="row-action row-action--primary" onClick={() => void handleCreateTask()} disabled={isSubmitting}>
+              {isSubmitting ? 'Creating Task...' : 'Create Task'}
+            </button>
+          )}
         </div>
       )}
       contentClassName="task-create-page"
@@ -446,15 +508,6 @@ export function TaskCreatePage() {
                   </div>
                 </div>
               </div>
-
-              <div className="task-wizard__footer">
-                <span className="task-wizard__footer-note">Step 1 sets the task identity. Steps and schedules stay optional.</span>
-                <div className="task-wizard__footer-actions">
-                  <button type="button" className="row-action row-action--primary" onClick={handleTaskNext}>
-                    Next
-                  </button>
-                </div>
-              </div>
             </>
           )}
 
@@ -465,22 +518,15 @@ export function TaskCreatePage() {
                   <h2>Steps</h2>
                   <p>Add the requests this task should run. If the task should exist first, skip this step and add requests later.</p>
                 </div>
-                {stepDrafts.length > 0 && (
-                  <button type="button" className="row-action" onClick={addStepDraft}>
-                    Add Step
-                  </button>
-                )}
+                <button type="button" className="row-action row-action--primary" onClick={addStepDraft}>
+                  Add Step
+                </button>
               </div>
 
               <div className="task-wizard__content-body">
                 {stepDrafts.length === 0 ? (
                   <div className="task-wizard__empty">
                     <p>No steps added yet.</p>
-                    <div className="workspace-view__actions">
-                      <button type="button" className="row-action" onClick={addStepDraft}>
-                        Add First Step
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <div className="task-wizard__stack">
@@ -657,31 +703,6 @@ export function TaskCreatePage() {
                   </div>
                 )}
               </div>
-
-              <div className="task-wizard__footer">
-                <span className="task-wizard__footer-note">Steps are optional in this flow. Add them now if the task should run immediately after setup.</span>
-                <div className="task-wizard__footer-actions">
-                  <button type="button" className="row-action" onClick={() => goToIndex(0)}>
-                    Back
-                  </button>
-                  {stepDrafts.length === 0 ? (
-                    <button
-                      type="button"
-                      className="row-action row-action--primary"
-                      onClick={() => {
-                        setStepsSkipped(true)
-                        unlockAndGo(2)
-                      }}
-                    >
-                      Skip for Now
-                    </button>
-                  ) : (
-                    <button type="button" className="row-action row-action--primary" onClick={handleStepsNext}>
-                      Next
-                    </button>
-                  )}
-                </div>
-              </div>
             </>
           )}
 
@@ -692,22 +713,15 @@ export function TaskCreatePage() {
                   <h2>Schedules</h2>
                   <p>Decide when the task should run. If timing is not settled yet, skip this step and come back later.</p>
                 </div>
-                {scheduleDrafts.length > 0 && (
-                  <button type="button" className="row-action" onClick={addScheduleDraft}>
-                    Add Schedule
-                  </button>
-                )}
+                <button type="button" className="row-action row-action--primary" onClick={addScheduleDraft}>
+                  Add Schedule
+                </button>
               </div>
 
               <div className="task-wizard__content-body">
                 {scheduleDrafts.length === 0 ? (
                   <div className="task-wizard__empty">
                     <p>No schedules added yet.</p>
-                    <div className="workspace-view__actions">
-                      <button type="button" className="row-action" onClick={addScheduleDraft}>
-                        Add First Schedule
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <div className="task-wizard__stack">
@@ -918,31 +932,6 @@ export function TaskCreatePage() {
                   </div>
                 )}
               </div>
-
-              <div className="task-wizard__footer">
-                <span className="task-wizard__footer-note">Schedules are optional. Leave this empty if the task should only be run manually for now.</span>
-                <div className="task-wizard__footer-actions">
-                  <button type="button" className="row-action" onClick={() => goToIndex(1)}>
-                    Back
-                  </button>
-                  {scheduleDrafts.length === 0 ? (
-                    <button
-                      type="button"
-                      className="row-action row-action--primary"
-                      onClick={() => {
-                        setSchedulesSkipped(true)
-                        unlockAndGo(3)
-                      }}
-                    >
-                      Skip for Now
-                    </button>
-                  ) : (
-                    <button type="button" className="row-action row-action--primary" onClick={handleSchedulesNext}>
-                      Next
-                    </button>
-                  )}
-                </div>
-              </div>
             </>
           )}
 
@@ -1030,18 +1019,6 @@ export function TaskCreatePage() {
                       </div>
                     )}
                   </section>
-                </div>
-              </div>
-
-              <div className="task-wizard__footer">
-                <span className="task-wizard__footer-note">The task will be created only after you confirm here.</span>
-                <div className="task-wizard__footer-actions">
-                  <button type="button" className="row-action" onClick={() => goToIndex(2)} disabled={isSubmitting}>
-                    Back
-                  </button>
-                  <button type="button" className="row-action row-action--primary" onClick={() => void handleCreateTask()} disabled={isSubmitting}>
-                    {isSubmitting ? 'Creating Task...' : 'Create Task'}
-                  </button>
                 </div>
               </div>
             </>

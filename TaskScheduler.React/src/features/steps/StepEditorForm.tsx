@@ -33,6 +33,7 @@ export function StepEditorForm({ task, step, onSaved }: StepEditorFormProps) {
   const [requestResult, setRequestResult] = useState<StepRequestTestResult | null>(null)
   const fieldId = useId()
   const isEdit = formData.Id > 0
+  const formId = 'step-editor-form'
 
   async function saveStep() {
     const name = formData.Name.trim()
@@ -97,22 +98,19 @@ export function StepEditorForm({ task, step, onSaved }: StepEditorFormProps) {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    if (submitter?.value === 'test-request') {
+      void testRequest()
+      return
+    }
+
     void saveStep()
   }
 
   return (
     <section className="workspace-view">
-      <form className="editor-form editor-form--wide" onSubmit={handleSubmit}>
-        <div className="workspace-view__header workspace-view__header--actions-only">
-          <div className="workspace-view__actions workspace-view__actions--spread">
-            <button type="button" className="row-action" onClick={() => void testRequest()}>
-              Test Request
-            </button>
-            <button type="submit" className="row-action row-action--primary">
-              Save Step
-            </button>
-          </div>
-        </div>
+      <form id={formId} className="editor-form editor-form--wide" onSubmit={handleSubmit}>
 
         <section className="workspace-card editor-form__section editor-form__section--identity">
           <div className="editor-form__section-header">
