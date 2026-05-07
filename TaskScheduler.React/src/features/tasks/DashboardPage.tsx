@@ -1,41 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { loadEntities } from '../../api/adminApi'
+import { loadDashboardSummary } from '../../api/adminApi'
 import { useTaskUpdatesContext } from '../../api/taskUpdatesContext'
 import { StatusText } from '../../components/StatusText'
-import type { Schedule, TaskSummary } from '../../types/entities'
+import type { DashboardScheduleQueueItem, DashboardSummary } from '../../types/entities'
 import { TaskLayoutShell } from './TaskLayoutShell'
 import { taskPaths } from './taskRoutes'
-
-type DashboardModel = {
-  totals: {
-    taskCount: number
-    activeTaskCount: number
-    scheduleCount: number
-    activeScheduleCount: number
-  }
-  watch: {
-    healthyTasks: number
-    attentionTasks: number
-    overdueTasks: number
-    missingScheduleTasks: number
-    schedulesWithoutNextRun: number
-  }
-  abnormalities: Array<{
-    taskId: number
-    name: string
-    signals: string[]
-    lastStatus: string
-    nextExecutionTime?: string | null
-  }>
-  upcomingSchedules: Array<{
-    id: number
-    taskId: number
-    name: string
-    nextExecutionTime: string
-    isActive: boolean
-  }>
-}
 
 function hasFailureStatus(value?: string | null) {
   if (!value) {
@@ -51,6 +21,15 @@ function hasRunningStatus(value?: string | null) {
   }
 
   return value.toLowerCase().includes('running')
+}
+
+function hasSuccessStatus(value?: string | null) {
+  if (!value) {
+    return false
+  }
+
+  const loweredValue = value.toLowerCase()
+  return loweredValue.includes('success') || loweredValue.includes('completed')
 }
 
 function isOverdue(isoTime?: string | null) {
@@ -82,111 +61,61 @@ function toDateTimeLabel(value?: string | null) {
   }).format(date)
 }
 
-function buildDashboardModel(tasks: TaskSummary[], schedules: Schedule[]): DashboardModel {
-  const activeTasks = tasks.filter((task) => task.IsActive)
-  const activeTaskIds = new Set(activeTasks.map((task) => task.Id))
-  const activeSchedules = schedules.filter((schedule) => schedule.IsActive)
-
-  const scheduleCountByTaskId = schedules.reduce<Record<number, number>>((accumulator, schedule) => {
-    accumulator[schedule.TaskId] = (accumulator[schedule.TaskId] ?? 0) + 1
-    return accumulator
-  }, {})
-
-  const schedulesWithoutNextRun = activeSchedules.filter((schedule) => !schedule.NextExecutionTime).length
-
-  const abnormalities = tasks
-    .map((task) => {
-      const signals: string[] = []
-
-      if (!task.IsActive) {
-        signals.push('Task is disabled')
-      }
-
-      if (hasFailureStatus(task.LastStatus)) {
-        signals.push('Last run failed')
-      }
-
-      if (hasRunningStatus(task.LastStatus)) {
-        signals.push('Execution still running')
-      }
-
-      if (task.IsActive && isOverdue(task.NextExecutionTime)) {
-        signals.push('Next run is overdue')
-      }
-
-      if (task.IsActive && (scheduleCountByTaskId[task.Id] ?? 0) === 0) {
-        signals.push('No schedule configured')
-      }
-
-      return {
-        taskId: task.Id,
-        name: task.Name,
-        signals,
-        lastStatus: task.LastStatus ?? 'Unknown',
-        nextExecutionTime: task.NextExecutionTime,
-      }
-    })
-    .filter((item) => item.signals.length > 0)
-    .sort((left, right) => right.signals.length - left.signals.length || left.name.localeCompare(right.name))
-
-  const overdueTasks = activeTasks.filter((task) => isOverdue(task.NextExecutionTime)).length
-  const missingScheduleTasks = activeTasks.filter((task) => (scheduleCountByTaskId[task.Id] ?? 0) === 0).length
-  const activeAttentionTaskIds = new Set(
-    abnormalities
-      .filter((item) => activeTaskIds.has(item.taskId))
-      .map((item) => item.taskId),
-  )
-
-  const upcomingSchedules = schedules
-    .filter((schedule) => typeof schedule.NextExecutionTime === 'string' && schedule.NextExecutionTime.length > 0)
-    .sort((left, right) => {
-      const leftTime = new Date(left.NextExecutionTime as string).getTime()
-      const rightTime = new Date(right.NextExecutionTime as string).getTime()
-      return leftTime - rightTime
-    })
-    .slice(0, 8)
-    .map((schedule) => ({
-      id: schedule.Id,
-      taskId: schedule.TaskId,
-      name: schedule.Name,
-      nextExecutionTime: schedule.NextExecutionTime as string,
-      isActive: schedule.IsActive,
-    }))
-
-  return {
-    totals: {
-      taskCount: tasks.length,
-      activeTaskCount: activeTasks.length,
-      scheduleCount: schedules.length,
-      activeScheduleCount: activeSchedules.length,
-    },
-    watch: {
-      healthyTasks: activeTasks.length - activeAttentionTaskIds.size,
-      attentionTasks: abnormalities.length,
-      overdueTasks,
-      missingScheduleTasks,
-      schedulesWithoutNextRun,
-    },
-    abnormalities: abnormalities.slice(0, 12),
-    upcomingSchedules,
+function toTriggerLabel(item: DashboardScheduleQueueItem) {
+  if (item.triggerType === 'Interval') {
+    return item.intervalTime ? `Every ${item.intervalTime} minute(s)` : 'Interval'
   }
+
+  if (item.triggerType === 'Daily') {
+    return item.startTime ? `Daily at ${item.startTime}` : 'Daily'
+  }
+
+  if (item.triggerType === 'Weekly') {
+    const days = item.daysOfWeek || 'No weekday'
+    const atTime = item.startTime ? ` at ${item.startTime}` : ''
+    return `${days}${atTime}`
+  }
+
+  if (item.triggerType === 'Monthly') {
+    const day = item.dayOfMonth ? `Day ${item.dayOfMonth}` : 'Day ?'
+    const atTime = item.startTime ? ` at ${item.startTime}` : ''
+    return `${day}${atTime}`
+  }
+
+  return item.triggerType
+}
+
+function getScheduleCardTone(item: DashboardScheduleQueueItem): 'success' | 'running' | 'failed' | 'disabled' | 'neutral' {
+  if (!item.isActive || !item.taskIsActive) {
+    return 'disabled'
+  }
+
+  if (hasFailureStatus(item.taskLastStatus) || isOverdue(item.nextExecutionTime)) {
+    return 'failed'
+  }
+
+  if (hasRunningStatus(item.taskLastStatus)) {
+    return 'running'
+  }
+
+  if (hasSuccessStatus(item.taskLastStatus)) {
+    return 'success'
+  }
+
+  return 'neutral'
 }
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const { lastUpdate } = useTaskUpdatesContext()
-  const [model, setModel] = useState<DashboardModel | null>(null)
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const loadDashboard = useCallback(async () => {
     try {
-      const [tasks, schedules] = await Promise.all([
-        loadEntities<TaskSummary>('Tasks'),
-        loadEntities<Schedule>('Schedules'),
-      ])
-
-      setModel(buildDashboardModel(tasks, schedules))
+      const data = await loadDashboardSummary()
+      setSummary(data)
       setErrorMessage(null)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load dashboard data.'
@@ -229,7 +158,7 @@ export function DashboardPage() {
     <TaskLayoutShell
       sidebar={sidebar}
       title="Dashboard"
-      description="Operational overview with immediate visibility for unstable or abnormal task behavior."
+      description="Upcoming schedule queue with detailed cards and abnormal task visibility."
       showTopBar={false}
       headerContent={(
         <div className="workspace-view__actions">
@@ -259,76 +188,79 @@ export function DashboardPage() {
         {!errorMessage && isLoading ? (
           <div className="workspace-state">
             <p className="workspace-state__eyebrow">Loading</p>
-            <h2>Refreshing operational signals</h2>
-            <p>Collecting tasks and schedules.</p>
+            <h2>Refreshing dashboard queue</h2>
+            <p>Collecting summary payload from API.</p>
           </div>
         ) : null}
 
-        {!errorMessage && !isLoading && model ? (
+        {!errorMessage && !isLoading && summary ? (
           <>
             <section className="dashboard-block">
               <header className="dashboard-block__header">
-                <h3>System Baseline</h3>
-                <p>Current enabled coverage and scheduler readiness.</p>
+                <h3>Upcoming Schedule Queue</h3>
+                <p>Schedule cards are ordered by next execution time and include task and trigger details.</p>
               </header>
 
-              <dl className="dashboard-stats" aria-label="System baseline summary">
-                <div>
-                  <dt>Tasks</dt>
-                  <dd>{model.totals.taskCount}</dd>
-                </div>
-                <div>
-                  <dt>Enabled Tasks</dt>
-                  <dd>{model.totals.activeTaskCount}</dd>
-                </div>
-                <div>
-                  <dt>Schedules</dt>
-                  <dd>{model.totals.scheduleCount}</dd>
-                </div>
-                <div>
-                  <dt>Enabled Schedules</dt>
-                  <dd>{model.totals.activeScheduleCount}</dd>
-                </div>
-              </dl>
-            </section>
+              {summary.scheduleQueue.length === 0 ? (
+                <p className="dashboard-empty">No schedules available in queue.</p>
+              ) : (
+                <ol className="dashboard-queue-list">
+                  {summary.scheduleQueue.map((item, index) => (
+                    <li key={item.scheduleId}>
+                      <article className={`dashboard-queue-card dashboard-queue-card--${getScheduleCardTone(item)}`}>
+                        <header className="dashboard-queue-card__head">
+                          <div className="dashboard-queue-card__title-block">
+                            <p className="dashboard-queue-card__index">Queue {index + 1}</p>
+                            <h4>{item.scheduleName}</h4>
+                            {item.scheduleDescription ? <p className="dashboard-queue-card__subtitle">{item.scheduleDescription}</p> : null}
+                          </div>
+                          <button
+                            type="button"
+                            className="row-action"
+                            onClick={() => navigate(taskPaths.overview(item.taskId))}
+                          >
+                            Open Task
+                          </button>
+                        </header>
 
-            <section className="dashboard-block">
-              <header className="dashboard-block__header">
-                <h3>Operational Signals</h3>
-                <p>Signals that indicate attention demand or degraded automation flow.</p>
-              </header>
-
-              <dl className="dashboard-signals" aria-label="Operational signal summary">
-                <div>
-                  <dt>Tasks in attention queue</dt>
-                  <dd>{model.watch.attentionTasks}</dd>
-                </div>
-                <div>
-                  <dt>Healthy active tasks</dt>
-                  <dd>{model.watch.healthyTasks}</dd>
-                </div>
-                <div>
-                  <dt>Overdue next runs</dt>
-                  <dd>{model.watch.overdueTasks}</dd>
-                </div>
-                <div>
-                  <dt>Tasks without schedule</dt>
-                  <dd>{model.watch.missingScheduleTasks}</dd>
-                </div>
-                <div>
-                  <dt>Enabled schedules missing next run</dt>
-                  <dd>{model.watch.schedulesWithoutNextRun}</dd>
-                </div>
-              </dl>
+                        <p className="dashboard-queue-card__line">
+                          <span>Task</span>
+                          <strong>{item.taskName} (#{item.taskId})</strong>
+                        </p>
+                        <p className="dashboard-queue-card__line">
+                          <span>Trigger</span>
+                          <strong>{toTriggerLabel(item)}</strong>
+                        </p>
+                        <p className="dashboard-queue-card__line">
+                          <span>Next run</span>
+                          <strong>{toDateTimeLabel(item.nextExecutionTime)}</strong>
+                        </p>
+                        <p className="dashboard-queue-card__line">
+                          <span>Last run</span>
+                          <strong>{toDateTimeLabel(item.taskLastExecutionTime)}</strong>
+                        </p>
+                        <p className="dashboard-queue-card__line">
+                          <span>Task status</span>
+                          <StatusText value={item.taskLastStatus} />
+                        </p>
+                        <p className="dashboard-queue-card__line">
+                          <span>Schedule state</span>
+                          <StatusText value={item.isActive ? 'Enabled' : 'Disabled'} />
+                        </p>
+                      </article>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </section>
 
             <section className="dashboard-block">
               <header className="dashboard-block__header">
                 <h3>Abnormal Task Activity</h3>
-                <p>Tasks currently reporting failure, delay, or incomplete scheduling setup.</p>
+                <p>Tasks reporting failure, delay, disabled status, or incomplete schedule setup.</p>
               </header>
 
-              {model.abnormalities.length === 0 ? (
+              {summary.abnormalTasks.length === 0 ? (
                 <p className="dashboard-empty">No abnormal task signals detected.</p>
               ) : (
                 <div className="dashboard-table-wrap">
@@ -343,58 +275,22 @@ export function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {model.abnormalities.map((item) => (
-                        <tr key={item.taskId}>
-                          <td>{item.name}</td>
-                          <td>{item.signals.join(', ')}</td>
+                      {summary.abnormalTasks.map((task) => (
+                        <tr key={task.taskId}>
+                          <td>{task.taskName}</td>
+                          <td>{task.signals.join(', ')}</td>
                           <td>
-                            <StatusText value={item.lastStatus} />
+                            <StatusText value={task.lastStatus} />
                           </td>
-                          <td>{toDateTimeLabel(item.nextExecutionTime)}</td>
+                          <td>{toDateTimeLabel(task.nextExecutionTime)}</td>
                           <td>
                             <button
                               type="button"
                               className="row-action"
-                              onClick={() => navigate(taskPaths.overview(item.taskId))}
+                              onClick={() => navigate(taskPaths.overview(task.taskId))}
                             >
                               Open
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="dashboard-block">
-              <header className="dashboard-block__header">
-                <h3>Upcoming Schedule Queue</h3>
-                <p>Nearest planned schedule executions across all tasks.</p>
-              </header>
-
-              {model.upcomingSchedules.length === 0 ? (
-                <p className="dashboard-empty">No upcoming schedules available.</p>
-              ) : (
-                <div className="dashboard-table-wrap">
-                  <table className="dashboard-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Schedule</th>
-                        <th scope="col">Task ID</th>
-                        <th scope="col">Next Run</th>
-                        <th scope="col">State</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {model.upcomingSchedules.map((schedule) => (
-                        <tr key={schedule.id}>
-                          <td>{schedule.name}</td>
-                          <td>{schedule.taskId}</td>
-                          <td>{toDateTimeLabel(schedule.nextExecutionTime)}</td>
-                          <td>
-                            <StatusText value={schedule.isActive ? 'Enabled' : 'Disabled'} />
                           </td>
                         </tr>
                       ))}

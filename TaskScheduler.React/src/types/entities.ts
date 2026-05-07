@@ -93,6 +93,38 @@ export interface StepRequestTestResult {
   response: StepResponseSnapshot
 }
 
+export interface DashboardScheduleQueueItem {
+  scheduleId: number
+  scheduleName: string
+  scheduleDescription?: string | null
+  isActive: boolean
+  triggerType: string
+  intervalTime?: number | null
+  startTime?: string | null
+  daysOfWeek?: string | null
+  dayOfMonth?: number | null
+  nextExecutionTime?: string | null
+  taskId: number
+  taskName: string
+  taskIsActive: boolean
+  taskLastStatus: string
+  taskLastExecutionTime?: string | null
+}
+
+export interface DashboardAbnormalTask {
+  taskId: number
+  taskName: string
+  lastStatus: string
+  nextExecutionTime?: string | null
+  signals: string[]
+}
+
+export interface DashboardSummary {
+  generatedAt: string
+  scheduleQueue: DashboardScheduleQueueItem[]
+  abnormalTasks: DashboardAbnormalTask[]
+}
+
 export interface ApiResponse<T> {
   success: boolean
   message: string

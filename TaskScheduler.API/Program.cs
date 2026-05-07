@@ -32,6 +32,7 @@ builder.Services.AddScoped<ScheduleAdminService>();
 builder.Services.AddScoped<ScheduleTimingService>();
 builder.Services.AddScoped<ScheduledTaskDispatchService>();
 builder.Services.AddScoped<ExecutionLogQueryService>();
+builder.Services.AddScoped<DashboardQueryService>();
 builder.Services.AddSignalR()
     .AddJsonProtocol(options => {
         options.PayloadSerializerOptions.PropertyNamingPolicy = null;
